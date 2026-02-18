@@ -1,0 +1,14 @@
+#PA2_SONG_V1
+id=i_see_the_light_1
+name=I see the light
+grouping=[]
+sustain=-
+---
+[yn] [ui] [iq] r r e [tz]
+q w [wx] [bm] w t r [rz] [e]
+[yn] [ui] [iq] r r e [tz]
+q w [ec] r e w [qz]
+[yn] [ui] [iq] r r e [tz]
+q w [ec] r e w [wx] q
+[tz] r e [wx] [ec] w m z [bz]
+[qet] r [ec] [b] m [zc]

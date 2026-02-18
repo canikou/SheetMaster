@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (gdb) - CMake",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/app.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "preLaunchTask": "CMake: build"
+    }
+  ]
+}

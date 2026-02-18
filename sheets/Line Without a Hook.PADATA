@@ -1,0 +1,133 @@
+#PA2_SONG_V1
+id=line_without_a_hook
+name=Line Without a Hook
+grouping=[]
+sustain=-
+---
+f f f f f f f d s s s s 
+[8d] [tf] t [8o] [8o] [8s] 
+[6a] e p e 6 [es] [ea] 
+[4s] q o q [4p] q s q 
+[5f] w s w [5o] [wd] [ws] 
+[8d] t f t [8o] [8o] [8s] 
+[6a] e s e [6f] f [ef] f [ef] f 
+[4f] d [qs] s [qs] d [4f] [qd] [qd] 
+[5d] [wd] [wd] [5d] [wf] [wg] 
+[8h] [tf] [tf] [8f] [8h] [8j] 
+[6j] e f e [6d] e s e 
+[4p] p [qp] p [qp] p [4g] [qg] [qf] 
+[5g] [wf] [wd] [5d] [wu] [wi] 
+[8o] t t 8 [8u] [8s] 
+[6a] e s e 6 [es] [ea] 
+[4s] q p q [4p] q f q 
+[5f] w [wd] [5g] w [wf] 
+[8f] 8 [8l] l - k 
+[6k] 6 6 j -- 
+[4k] 4 4 k - k 
+[5j] [5h] [5h] j h g 
+[8s] 8 8 - s s  
+6 [6p] 6 -- s  
+[4s] 4 [4p] [4g] 4 [4f] 
+[5d] 5 5 [5f] 6 7 
+8 [ts] [ts] [8s] [8d] [8s] 
+[6a] e s e [6a] e s e 
+[4s] q [qp] 4 q [qf] 
+[5g] w [wf] [5g] w [wf] 
+[8o] t [ts] [8s] [8d] [8d] 
+[6d] e s e [6p] e a e 
+[4s] q [qp] 4 q q 
+[5g] w [wf] [5g] w [wf] 
+[8f] [tf] [th] [8h] [8h] s 8 
+[6a] e s e [6a] e s e 
+[4p] q g q [4f] q f q 
+[5f] w g w [5f] w [ws] 
+[8f] [tg] [th] [8h] [8h] s 8 
+[6a] e p e [6g] e [ef] 
+[4p] q q 4 q [qf] 
+[5f] w [wf] [5a] w [wa] 
+[8s] --- o s 
+[6a] -- p -- 
+[4p] -- o -- 
+[5v] v v v h h 
+h 8 8 8 d s 
+d 6 f 6 6 v v 
+v 4 x 4 4 d s 
+d 5 s 5 5 - o 
+s [8d] [8f] [8h]   f  
+f [6f] [6f] d 6   s s 
+[4s] q [qp] [4p] q [qs] 
+[5f] w [wg] [5f] [wd] [wd] 
+f 8 8 8 o s 
+a 6 s 6 6 l l 
+l j 4 [4j] [4x]   x  
+[5x] 5 5 [5z] 6 7 
+[8s] [ts] [ts] [8s] [8d] [8s] 
+[6a] e s e [6a] e s e 
+[4s] q [qp] 4 q [qf] 
+[5g] w [wf] [5g] w [wf] 
+[8o] t [ts] [8s] [8d] [8d] 
+[6d] e s e [6p] e a e 
+[4s] q [qp] 4 4 4 
+[5g] w [wf] [5g] w [wf] 
+[8f] [tf] [th] [8h] [8h] s 8 
+[6a] e s e [6a] e s e 
+[4p] q g q [4f] q f q 
+[5f] w g w [5f] w [ws] 
+[8f] [8g] [8h] [8h] [8h] s 8 
+[6a] 6 p 6 [6g] 6 [6f] 
+[4p] 4 4 4 4 [4f] 
+[5f] 5 [5f] [5d] 5 [5s] 
+[8v] 8 8 8 [8x] [8v] 
+[6x] 6 [6z] [6c] 6 [6x] 
+4 [4v] [4x] [4v] 4 [4v] 
+5 [5v] [5x] [5v] [5b] [5v] 
+[8j] t s t [8k] 8 s 8 
+[6k] e s e [6z] e [ef] 
+[4j] q l q [4k] q l q 
+[5k] w l w [5z] [wf] [wd] 
+4 p h g 4 [4f] 
+5 p h g 5 [5f] 
+[4l]   j 4 [4j]   l 4 
+[5k] 5 5 [5l] 5 5 
+8 t t t t 8 t t t t 
+6 e e e e 6 e e e e 
+4 q q q q 4 q q q q 
+5 w w w w [5h] w w w w 
+[8f] --- t t t t 
+6 e e e e 6 e e e e 
+4 q q q q 4 q q q q 
+[5d] [5d] [5d] f d s 
+[8d]   f   f d s 
+[6d]   a   s - a 
+[4p] - s g - f 
+[5d] - d f - g 
+[8h] - f f - h 
+[6j] - f d - s 
+4 p s g - f 
+[5d] - d f - g 
+[8f] - s f - s 
+[6a] -- s - a 
+[4p] - s g - f 
+[5d] - d x - c 
+[8x] t [tl] [8x] 8 [8l] 
+[6k] e e [6l] e [ea] 
+[4p] q [qo] [4o] q [qf] 
+[5x] 5 [5c] [5k] 5 [5k] 
+[8l] h h v c x 
+[6c] e x e [6z] e [ex] 
+[4x] q [ql] 4 q [qx] 
+[5c] w [wx] [5c] w [wv] 
+[8v] t [tv] [8v] [8v] [8v] 
+[6v] e c e [6x] e v e 
+[4v] q [qc] 4 q q 
+[5c] w [wx] [5c] w [wv] 
+[8v] [tv] [tv] [8v] [8v] l 8 
+[6k] e l e [6k] e l e 
+[4b] q v q [4v] q x q 
+[5c] w [wx] 5 w [wl] 
+[8x] [tc] [tv] [8v] [8v] l 8 
+[6k] e [ej] [6c] e [ex] 
+[4j] q q 4 q [qx] 
+[5x] w [wx] [5k] w 
+[wk] 
+[8l]

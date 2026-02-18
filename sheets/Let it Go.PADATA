@@ -1,0 +1,128 @@
+#PA2_SONG_V1
+id=let_it_go
+name=Let it Go
+grouping=[]
+sustain=-
+---
+[euk] l f k-l-
+[qtk] l f l-k-d
+[wyj] k d j-k-d
+[9eh]--g--
+[euk] l f k-l-
+[qtk] l f l-k-d
+[wyj] k d j-k-d
+[9eh]--G- p
+[euf]-f-f-f f
+[qtf] d s s- s s
+[wyd] d--s a p
+[9e]--p p
+[euf] f f f- h h
+[qt] h--s s
+[wyd] f--d s d
+[9e]---
+[eu]-f f- h j
+[qt] h-f-h-h
+[wy] h-g f g-g
+[9e] f--
+[eu]-d f d s-d
+[wy]-d f d-s-
+[9e]-p--
+[9e]--[9e]--
+[5wk]-d d-h-h
+[5w]-d d-j-
+[4qj]-j h j j-h
+[4qj] k-l-k-
+[5wk]-d d-h-h
+[5w]-d d-j-j
+[4q]--[4q]--
+[4q]-[4q]-[4q]-[4qo] p
+[4q] a [4q] s [4q]-[4q]-
+[4q]-[4q]-[4q] j k l
+[tuo]--h x z
+[wry]--l k
+[etuj] j j-j k-l
+[qet]--j k l
+[tuo]--h x z
+[wry]--l z x
+[etu] x-c x-z l
+[qetz] l--
+[etuh]- f- [wryd]--
+s-s-
+[etuh]- f- [qetd]---
+s s
+[0ra]- [(Eo]- o---
+s
+[qtg]-g f g f g g
+f s-s g s g f
+[to]--s-
+[wyd]--d s a s
+[eu] f f f f f-f
+[qt]-s--s-
+[wyh]-h g-f-
+[9ed]--s s
+[euf]-f f-h-j
+[wy]-h--h-
+[9el]-l k-j-j
+[9e]-d-G-j-
+[wyh]-d d-h-h
+[wy] d-d-h-j
+[qt]-h j-h-j
+[qt] k-l- z-
+[wyh]-d d-h-h
+[wy] d-h-d j-
+[qt]-[qt]-[qt] k [qt] l
+[qt]-[qt]-[qt]-[qt]-
+[qt]-[qt]-[qt] j k l
+[tuo]--h h z
+[wry]--l j j
+[etu] j j j-k-l
+[qet] z l- j k l
+[tuo]--h x z
+[wry]--l x
+[etu] x-c- x z
+[qetz] l- l--
+[etuh]- f- [wryd]---
+s-
+[etuh]- f- [qets]---
+s s
+[0ra]- [(Eo]- o--
+P-D-h-
+[qtg] J l J Z z l [qtJ]
+[qtH] J l j J l D [qtf]
+[qtg] J l J Z z l [qtJ]
+[qtH] J l j J l D [qtf]
+[qtg]-[qtg] f [qt] g [qt] h
+[qt] j [qt] J [qt] l [qt] Z
+[qt] z [qt] l [qt] J [qt] l
+[qt]-[qt]-[qt]-[qt] [qt]
+[qt]-[qtg] f [qt] g [qt] h
+[qt] j [qt] J [qt] l [qt] Z
+[qt] z [qt] l [qt] J [qt] Z
+[qt] z [qtl] z [qtl]-[qt] [qt]
+[wy]-[wyh]-[wyG] h [wy] j
+[wy] k [wy] l [wy] z [wy] c
+[wy] x [wy] z [wy] l [wy] z
+[wy]-[wy]-[wy]-[wy] [wy]
+[eu]-f f-f-f
+[qt]-s s--s
+[wyd]-s d-f-g
+[9e]---
+[qt]--g g g
+[8wf]--o o d
+[wy]--s p p
+[eu] p p p-a-s
+[qt] d s- p a s
+[8w]--o f f
+[wyd]--s f
+[eu] f-g f-d s
+[qtd] s--
+[tuoh]- f- [wryd]--
+s-s-
+[etuh]- f- [qetg] f-
+d s---
+s s
+[0ra]- [(Es]- h---
+s
+[qtg]-g f g f g g
+f s
+/
