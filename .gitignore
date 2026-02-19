@@ -1,8 +1,18 @@
 # Build outputs
-/build/
-/out/
-/dist/
-/cmake-build-*/
+build/
+build-release/
+dist/
+out/
+cmake-build-*/
+CMakeUserPresets.json
+cpp-mntchocoluvr/
+
+# Keep shared VS Code config, ignore everything else in .vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/cpp.code-snippets
 
 # CMake / Ninja generated files
 CMakeCache.txt
@@ -21,16 +31,16 @@ moc_*.h
 qrc_*.cpp
 ui_*.h
 
-# CMake tool metadata
-CMakeUserPresets.json
-
-# Editor / IDE
-.vscode/*.log
-.vscode/ipch/
-.idea/
+# Other IDE metadata
 .vs/
+.idea/
 
-# OS files
+# Common junk
+*.user
+*.log
+*.tmp
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
 
@@ -48,6 +58,3 @@ sheets/song_tags.PADISCRIM
 *.dll
 *.pdb
 *.ilk
-
-# Logs
-*.log

@@ -1,39 +1,83 @@
 # SheetMaster
 
-SheetMaster is a Windows Qt6 desktop helper for Virtual Piano and similar keyboard-note formats.  
-It lets you import sheet text, manage songs/tags, and use a draggable always-on-top overlay that highlights the current key group while you play.
+Production-style C++20 Qt6 desktop app using CMake presets, VS Code workflow, CTest, and GitHub CI.
 
-## Features
+## Goals
+
+- Fast local iteration (`Ctrl+Shift+B`, `F5`).
+- Standardized template-aligned layout and workflow.
+- Debug and release preset parity across local + CI.
+
+## Prerequisites
+
+- Windows + MSYS2 UCRT64 toolchain installed at `C:/msys64/ucrt64`.
+- Tools available in UCRT64:
+  - `gcc`
+  - `cmake`
+  - `ninja`
+  - `gdb`
+  - `qt6-base`
+- VS Code extensions:
+  - `ms-vscode.cpptools`
+  - `ms-vscode.cmake-tools`
+
+## Project Structure
+
+- `CMakeLists.txt`: app + core library targets and test registration.
+- `CMakePresets.json`: configure/build/test presets (`debug`, `release`).
+- `src/main.cpp`: executable entrypoint target.
+- `src/*.cpp` + `include/piano_assist/*.hpp`: reusable app/core code.
+- `tests/core_tests.cpp`: baseline CTest executable.
+- `.vscode/tasks.json`: configure/build/test tasks.
+- `.vscode/launch.json`: preset-based debug launch profiles.
+- `.github/workflows/ci.yml`: GitHub Actions build/test pipeline.
+
+## Binary Naming Convention
+
+- Debug/dev-style builds output `app.exe`.
+- Release builds output `SheetMaster.exe`.
+
+## Getting Started
+
+1. Configure Debug:
+   - `cmake --preset debug`
+2. Build Debug:
+   - `cmake --build --preset debug --parallel`
+3. Run tests:
+   - `ctest --preset debug`
+4. Run app:
+   - `./build/debug/app.exe`
+
+## VS Code Workflow
+
+- `Ctrl+Shift+B`: runs default task `build (debug)`.
+- `F5`: use launch profile `Debug (Preset Debug Binary)`.
+  - Launches `${workspaceFolder}/build/debug/app.exe`
+  - Runs `build (debug)` first as preLaunchTask.
+- Manual tasks:
+  - `configure (debug)` / `configure (release)`
+  - `build (debug)` / `build (release)`
+  - `test (debug)` / `test (release)`
+
+## CMake Presets
+
+- Configure presets: `debug`, `release`
+- Build presets: `debug`, `release`
+- Test presets: `debug`, `release`
+- Generator: Ninja
+- Toolchain path injected via preset environment:
+  - `PATH=C:/msys64/ucrt64/bin;$penv{PATH}`
+
+## App Features
 
 - Song library with search + tag filtering.
-- Import and edit songs directly from pasted text.
-- Supports grouping modes:
-  - `[]` chords
-  - `()` chords (for formats where `[` and `]` are real keys)
-- Supports sustain/delay indicators:
-  - `-`
-  - `|`
-- Floating always-on-top overlay with:
-  - current line + next line preview
-  - highlighted current key group
-  - song/progress info and pause indicator
-- Strict mode and non-strict mode playback advancement.
+- Import and edit songs from pasted text.
+- Grouping modes: `[]` and `()`.
+- Sustain indicators: `-` and `|`.
+- Always-on-top floating overlay with line/chord progress UI.
+- Strict and non-strict playback advancement.
 - Enter-key pause/resume during playback.
 - Persistent settings, songs, and per-song tags.
-
-## Sheet Parsing Examples
-
-- Single notes: `t r w t r w`
-- Chords with square grouping: `[tf] [rd] [es]`
-- Chords with parentheses grouping: `(R=) (6T)`
-- Sustain markers: `t--- r-- [tf]-`
-- Line-based chunking input:
-
-```text
-[tf]-u-o-s-
-[rd]-y-o-a-
-t r w t r w
-```
 
 ## Data Storage
 
@@ -41,39 +85,28 @@ t r w t r w
 - Song files: `sheets/*.PADATA`
 - Song tags: `sheets/song_tags.PADISCRIM`
 
-Song files use a metadata header (`id`, `name`, grouping, sustain) plus the raw sheet body.
-
-## Build (MSYS2 UCRT64)
-
-Open the **MSYS2 UCRT64** shell and install dependencies:
-
-```bash
-pacman -S --needed \
-  mingw-w64-ucrt-x86_64-toolchain \
-  mingw-w64-ucrt-x86_64-cmake \
-  mingw-w64-ucrt-x86_64-ninja \
-  mingw-w64-ucrt-x86_64-qt6-base
-```
-
-Configure and build:
-
-```bash
-cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/msys64/ucrt64
-cmake --build build
-```
-
-Run:
-
-```bash
-./build/app.exe
-```
-
 ## Distribution Notes (Windows)
 
-For sharing outside your dev machine, deploy Qt runtime files next to the executable:
+Use the standardized packaging script:
 
-```bash
-C:/msys64/ucrt64/bin/windeployqt6.exe build/app.exe
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-portable.ps1
 ```
 
-If needed, also ship required UCRT64 runtime DLLs from `C:/msys64/ucrt64/bin`.
+It builds release with presets and emits:
+
+- `dist/SheetMaster/`
+- `dist/SheetMaster-portable-win64.zip`
+
+## For Coding Agents / LLMs
+
+When modifying this repository:
+
+1. Prefer presets over ad-hoc CMake commands.
+   - Configure: `cmake --preset debug`
+   - Build: `cmake --build --preset debug --parallel`
+   - Test: `ctest --preset debug`
+2. Keep debug output path assumption intact:
+   - `build/debug/app.exe`
+3. Keep release output named `SheetMaster.exe`.
+4. Keep CI and local preset workflow in sync.

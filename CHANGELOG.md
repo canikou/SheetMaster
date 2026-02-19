@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.0 - Template workflow standardization
+
+- Standardized build workflow to template-style CMake presets (`debug`, `release`) via `CMakePresets.json`.
+- Refactored build layout into a core library target plus app executable target in `CMakeLists.txt`.
+- Added baseline CTest coverage (`tests/core_tests.cpp`) and registered it in CMake.
+- Standardized VS Code workflow (`.vscode/tasks.json`, `.vscode/launch.json`, `.vscode/settings.json`) for preset-based build/debug.
+- Added GitHub automation and governance files:
+  - `.github/workflows/ci.yml`
+  - `.github/CODEOWNERS`
+  - `.github/dependabot.yml`
+  - `CONTRIBUTING.md`
+  - `SECURITY.md`
+- Added `.editorconfig` and SPDX snippet templates (`.vscode/cpp.code-snippets`).
+- Updated `README.md` to match the standardized layout/workflow and preset commands.
+- Updated `scripts/package-portable.ps1` to use the `release` preset and release binary naming (`SheetMaster.exe`).
+
 ## v1.0.0 - Initial release
 
 - Released SheetMaster as a Qt6 desktop assistant for Virtual Piano-style sheet playback.

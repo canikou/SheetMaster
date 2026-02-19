@@ -2,17 +2,51 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "CMake: build",
+      "label": "configure (debug)",
       "type": "shell",
       "command": "cmake",
-      "args": [
-        "--build",
-        "${workspaceFolder}/build"
-      ],
+      "args": ["--preset", "debug"],
+      "problemMatcher": []
+    },
+    {
+      "label": "build (debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "--parallel"],
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "configure (release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "release"],
+      "problemMatcher": []
+    },
+    {
+      "label": "build (release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "release", "--parallel"],
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "test (debug)",
+      "type": "shell",
+      "command": "ctest",
+      "args": ["--preset", "debug"],
+      "dependsOn": ["build (debug)"],
+      "problemMatcher": []
+    },
+    {
+      "label": "test (release)",
+      "type": "shell",
+      "command": "ctest",
+      "args": ["--preset", "release"],
+      "dependsOn": ["build (release)"],
       "problemMatcher": []
     }
   ]

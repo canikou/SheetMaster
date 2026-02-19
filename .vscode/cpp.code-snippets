@@ -1,0 +1,24 @@
+{
+  "CPP Source With SPDX": {
+    "scope": "cpp,c",
+    "prefix": "cppmit",
+    "description": "C++ source file with MIT SPDX header",
+    "body": [
+      "// SPDX-License-Identifier: MIT",
+      "",
+      "$0"
+    ]
+  },
+  "CPP Header With SPDX": {
+    "scope": "cpp,c",
+    "prefix": "hppmit",
+    "description": "C++ header with MIT SPDX header and pragma once",
+    "body": [
+      "// SPDX-License-Identifier: MIT",
+      "",
+      "#pragma once",
+      "",
+      "$0"
+    ]
+  }
+}
