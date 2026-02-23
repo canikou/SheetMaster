@@ -196,7 +196,8 @@ QString migration_summary_text(const MigrationSummary& summary) {
     text += QString("Files to rewrite: %1\n").arg(to_qt_int(summary.files_to_rewrite));
     text += QString("Legacy .txt files: %1\n").arg(to_qt_int(summary.legacy_extension_files));
     text += QString("Legacy format files: %1\n").arg(to_qt_int(summary.legacy_format_files));
-    text += QString("Missing id/name fixes: %1\n").arg(to_qt_int(summary.missing_id_or_name));
+    text += QString("Missing id fixes: %1\n").arg(to_qt_int(summary.missing_id));
+    text += QString("Missing name fixes: %1\n").arg(to_qt_int(summary.missing_name));
     text += QString("Grouping fixes: %1\n").arg(to_qt_int(summary.normalized_grouping));
     text +=
         QString("Sustain metadata fixes: %1\n").arg(to_qt_int(summary.normalized_sustain_metadata));
@@ -209,6 +210,32 @@ QString migration_summary_text(const MigrationSummary& summary) {
         }
     }
     return text;
+}
+
+QString tag_repair_summary_text(const TagRepairSummary& summary) {
+    QString text;
+    text += QString("Songs scanned: %1\n").arg(to_qt_int(summary.songs_scanned));
+    text += QString("Songs missing tags: %1\n").arg(to_qt_int(summary.songs_missing_tags));
+    text += QString("Songs with empty tags: %1\n").arg(to_qt_int(summary.songs_with_empty_tags));
+    text += QString("Legacy name-key tag migrations: %1\n")
+                .arg(to_qt_int(summary.legacy_name_keys_migrated));
+    text += QString("Duplicate name-key tag entries removed: %1\n")
+                .arg(to_qt_int(summary.duplicate_name_keys_removed));
+    text += QString("Orphan tag entries removed: %1\n")
+                .arg(to_qt_int(summary.orphan_tag_entries_removed));
+    if (!summary.sample_affected_songs.empty()) {
+        text += "\n\nSample affected songs/keys:";
+        for (const std::string& sample : summary.sample_affected_songs) {
+            text += QString("\n- %1").arg(QString::fromStdString(sample));
+        }
+    }
+    return text;
+}
+
+QString sanitize_summary_text(const MigrationSummary& file_summary,
+                              const TagRepairSummary& tag_summary) {
+    return QString("Song Data\n--------\n%1\n\nTag Data\n--------\n%2")
+        .arg(migration_summary_text(file_summary), tag_repair_summary_text(tag_summary));
 }
 
 QString build_export_share_string(const std::vector<Song>& songs, const SongRepository& repository,
@@ -506,6 +533,7 @@ void MainWindow::refresh_song_list() {
 
     const std::vector<Song> songs = repository_.list_songs(search);
     tag_store_.migrate_song_name_keys_to_ids(songs);
+    tag_store_.ensure_default_tag_for_songs(songs, kDefaultTag);
     repopulate_tag_filter();
 
     const std::string selected_tag = [&]() {
@@ -984,7 +1012,8 @@ void MainWindow::handle_import_songs() {
 
     std::string song_name = name_edit->text().trimmed().toStdString();
     if (song_name.empty()) {
-        song_name = "Untitled_Song";
+        QMessageBox::warning(this, "Import Songs", "Song name is required.");
+        return;
     }
 
     try {
@@ -1136,7 +1165,8 @@ void MainWindow::handle_manage_songs() {
 
         std::string requested_name = name_edit->text().trimmed().toStdString();
         if (requested_name.empty()) {
-            requested_name = song.name;
+            QMessageBox::warning(&edit_dialog, "Manage Songs", "Song name is required.");
+            return false;
         }
 
         const auto [open_brace, close_brace] =
@@ -1327,14 +1357,17 @@ void MainWindow::handle_manage_songs() {
     });
 
     connect(migrate_button, &QPushButton::clicked, &dialog, [&]() {
-        const MigrationSummary preview = repository_.preview_convention_migration();
-        if (!preview.has_changes()) {
+        const MigrationSummary file_preview = repository_.preview_convention_migration();
+        const std::vector<Song> preview_songs = repository_.list_songs();
+        const TagRepairSummary tag_preview =
+            tag_store_.preview_sanitize_repairs(preview_songs, kDefaultTag);
+        if (!file_preview.has_changes() && !tag_preview.has_changes()) {
             QMessageBox::information(&dialog, "Sanitize Data",
-                                     "No song data changes are currently needed.");
+                                     "No sanitize changes are currently needed.");
             return;
         }
 
-        const QString summary = migration_summary_text(preview);
+        const QString summary = sanitize_summary_text(file_preview, tag_preview);
         const auto confirm = QMessageBox::question(
             &dialog, "Sanitize Data",
             summary +
@@ -1352,13 +1385,16 @@ void MainWindow::handle_manage_songs() {
             return;
         }
 
-        const MigrationSummary applied = repository_.apply_convention_migration();
+        const MigrationSummary file_applied = repository_.apply_convention_migration();
+        const std::vector<Song> applied_songs = repository_.list_songs();
+        const TagRepairSummary tag_applied =
+            tag_store_.apply_sanitize_repairs(applied_songs, kDefaultTag);
         refresh_manager_table();
         refresh_song_list();
 
-        QMessageBox::information(
-            &dialog, "Sanitize Data",
-            QString("Sanitization complete.\n\n%1").arg(migration_summary_text(applied)));
+        QMessageBox::information(&dialog, "Sanitize Data",
+                                 QString("Sanitization complete.\n\n%1")
+                                     .arg(sanitize_summary_text(file_applied, tag_applied)));
     });
 
     connect(close_button, &QPushButton::clicked, &dialog, &QDialog::accept);

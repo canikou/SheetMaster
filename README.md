@@ -18,6 +18,7 @@ SheetMaster is a Virtual Piano assistant focused on quick sheet playback and ite
 
 - Search songs by text and filter by tag.
 - Import songs with optional BPM and tags.
+- Song name is required when importing or editing.
 - Manage songs in a dedicated dialog:
   - edit/delete songs
   - batch export selected/all songs
@@ -27,6 +28,7 @@ SheetMaster is a Virtual Piano assistant focused on quick sheet playback and ite
   - pre-change summary
   - automatic `backup.zip` creation
   - convention normalization (metadata/grouping/sustain token cleanup)
+  - tag repair (missing/empty tag backfill, legacy name-key migration, orphan tag cleanup)
 
 ### Playback and Controls
 

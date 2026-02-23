@@ -16,7 +16,8 @@ struct MigrationSummary {
     std::size_t files_to_rewrite{0};
     std::size_t legacy_extension_files{0};
     std::size_t legacy_format_files{0};
-    std::size_t missing_id_or_name{0};
+    std::size_t missing_id{0};
+    std::size_t missing_name{0};
     std::size_t normalized_grouping{0};
     std::size_t normalized_sustain_metadata{0};
     std::size_t normalized_body_sustain_tokens{0};

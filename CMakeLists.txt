@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.21)
 # ---- Edit this ONE variable per project ----
 set(APP_NAME "SheetMaster")
 # --------------------------------------------
-project(${APP_NAME} VERSION 1.5.1 LANGUAGES CXX)
+project(${APP_NAME} VERSION 1.5.2 LANGUAGES CXX)
 
 include(CTest)
 include(GNUInstallDirs)
@@ -144,6 +144,7 @@ if (BUILD_TESTING)
     add_executable(${TEST_TARGET}
         tests/test_main.cpp
         tests/core_tests.cpp
+        tests/sanitize_tests.cpp
         tests/string_tests.cpp
     )
     target_link_libraries(${TEST_TARGET} PRIVATE ${CORE_TARGET} doctest::doctest)

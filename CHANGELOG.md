@@ -8,6 +8,24 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 - No entries yet.
 
+## [1.5.2]
+
+### Added
+- Sanitize Data now audits and repairs tag data in addition to song-file conventions:
+  - fills missing/empty tags with `Virtual Piano`
+  - migrates legacy name-key tag entries to stable song IDs when unambiguous
+  - removes orphan tag entries that no longer map to known songs
+- Added sanitize-focused test coverage for:
+  - missing-name + sustain/body normalization in song files
+  - tag-repair workflow (missing tags, legacy key migration, orphan cleanup)
+
+### Changed
+- Import and edit flows now require a non-empty song name before saving.
+
+### Fixed
+- Sanitize preview now detects missing `name` metadata correctly instead of masking it during read.
+- Sustain metadata normalization reporting now correctly detects legacy non-`-` indicators.
+
 ## [1.5.1]
 
 ### Fixed

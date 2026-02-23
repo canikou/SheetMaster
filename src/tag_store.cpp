@@ -6,6 +6,7 @@
 #include <set>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace piano_assist {
@@ -148,6 +149,170 @@ void save_map(const std::filesystem::path& storage_file, const TagMap& map) {
     }
 }
 
+void append_sample(TagRepairSummary* summary, std::string value) {
+    if (summary == nullptr) {
+        return;
+    }
+
+    value = trim(value);
+    if (value.empty()) {
+        return;
+    }
+
+    const auto already_recorded = std::find(summary->sample_affected_songs.begin(),
+                                            summary->sample_affected_songs.end(), value);
+    if (already_recorded != summary->sample_affected_songs.end()) {
+        return;
+    }
+
+    if (summary->sample_affected_songs.size() >= 5) {
+        return;
+    }
+    summary->sample_affected_songs.push_back(std::move(value));
+}
+
+TagRepairSummary inspect_or_apply_tag_repairs(const std::filesystem::path& storage_file,
+                                              const std::vector<Song>& songs,
+                                              const std::string_view default_tag,
+                                              const bool apply_changes) {
+    TagRepairSummary summary{};
+    summary.songs_scanned = songs.size();
+    if (songs.empty()) {
+        return summary;
+    }
+
+    std::vector<std::string> normalized_default_tags = normalize_tags({trim(default_tag)});
+    if (normalized_default_tags.empty()) {
+        return summary;
+    }
+
+    TagMap map = load_map(storage_file);
+    bool changed = false;
+
+    std::unordered_map<std::string, int> name_counts;
+    name_counts.reserve(songs.size());
+    std::unordered_map<std::string, std::string> unique_name_to_id;
+    unique_name_to_id.reserve(songs.size());
+    std::unordered_set<std::string> song_ids;
+    song_ids.reserve(songs.size());
+    std::unordered_set<std::string> song_names;
+    song_names.reserve(songs.size());
+
+    for (const Song& song : songs) {
+        const std::string id_key = trim(song.id);
+        const std::string name_key = trim(song.name);
+        if (!id_key.empty()) {
+            song_ids.insert(id_key);
+        }
+        if (!name_key.empty()) {
+            song_names.insert(name_key);
+            ++name_counts[name_key];
+        }
+    }
+
+    for (const Song& song : songs) {
+        const std::string id_key = trim(song.id);
+        const std::string name_key = trim(song.name);
+        if (id_key.empty() || name_key.empty()) {
+            continue;
+        }
+
+        const auto name_count = name_counts.find(name_key);
+        if (name_count != name_counts.end() && name_count->second == 1) {
+            unique_name_to_id[name_key] = id_key;
+        }
+    }
+
+    for (const Song& song : songs) {
+        const std::string id_key = trim(song.id);
+        const std::string name_key = trim(song.name);
+        if (id_key.empty()) {
+            continue;
+        }
+
+        auto id_it = map.find(id_key);
+        if (id_it == map.end() && !name_key.empty()) {
+            const auto name_count = name_counts.find(name_key);
+            if (name_count != name_counts.end() && name_count->second == 1) {
+                const auto name_it = map.find(name_key);
+                if (name_it != map.end()) {
+                    map[id_key] = normalize_tags(name_it->second);
+                    map.erase(name_it);
+                    id_it = map.find(id_key);
+                    ++summary.legacy_name_keys_migrated;
+                    append_sample(&summary, song.name);
+                    changed = true;
+                }
+            }
+        }
+
+        if (id_it == map.end()) {
+            ++summary.songs_missing_tags;
+            append_sample(&summary, song.name);
+            if (apply_changes) {
+                map[id_key] = normalized_default_tags;
+                changed = true;
+            }
+            continue;
+        }
+
+        const std::vector<std::string> normalized = normalize_tags(id_it->second);
+        if (normalized.empty()) {
+            ++summary.songs_missing_tags;
+            ++summary.songs_with_empty_tags;
+            append_sample(&summary, song.name);
+            if (apply_changes) {
+                map[id_key] = normalized_default_tags;
+                changed = true;
+            }
+            continue;
+        }
+
+        if (normalized != id_it->second) {
+            map[id_key] = normalized;
+            changed = true;
+        }
+    }
+
+    for (const auto& [name_key, id_key] : unique_name_to_id) {
+        const auto name_it = map.find(name_key);
+        const auto id_it = map.find(id_key);
+        if (name_it == map.end() || id_it == map.end()) {
+            continue;
+        }
+
+        ++summary.duplicate_name_keys_removed;
+        append_sample(&summary, name_key);
+        if (apply_changes) {
+            map.erase(name_it);
+            changed = true;
+        }
+    }
+
+    for (auto it = map.begin(); it != map.end();) {
+        const std::string key = trim(it->first);
+        if (!key.empty() && (song_ids.contains(key) || song_names.contains(key))) {
+            ++it;
+            continue;
+        }
+
+        ++summary.orphan_tag_entries_removed;
+        append_sample(&summary, key);
+        if (apply_changes) {
+            it = map.erase(it);
+            changed = true;
+        } else {
+            ++it;
+        }
+    }
+
+    if (apply_changes && changed) {
+        save_map(storage_file, map);
+    }
+
+    return summary;
+}
+
 } // namespace
 
 TagStore::TagStore(std::filesystem::path storage_file) : storage_file_(std::move(storage_file)) {
@@ -218,6 +383,61 @@ void TagStore::migrate_song_name_keys_to_ids(const std::vector<Song>& songs) con
     if (changed) {
         save_map(storage_file_, map);
     }
+}
+
+void TagStore::ensure_default_tag_for_songs(const std::vector<Song>& songs,
+                                            const std::string_view default_tag) const {
+    if (songs.empty()) {
+        return;
+    }
+
+    const std::string normalized_default = trim(default_tag);
+    if (normalized_default.empty()) {
+        return;
+    }
+
+    TagMap map = load_map(storage_file_);
+    bool changed = false;
+
+    for (const Song& song : songs) {
+        const std::string key = trim(song.id);
+        if (key.empty()) {
+            continue;
+        }
+
+        const auto it = map.find(key);
+        if (it == map.end()) {
+            map[key] = {normalized_default};
+            changed = true;
+            continue;
+        }
+
+        const std::vector<std::string> normalized_tags = normalize_tags(it->second);
+        if (normalized_tags.empty()) {
+            map[key] = {normalized_default};
+            changed = true;
+            continue;
+        }
+
+        if (normalized_tags != it->second) {
+            map[key] = normalized_tags;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        save_map(storage_file_, map);
+    }
+}
+
+TagRepairSummary TagStore::preview_sanitize_repairs(const std::vector<Song>& songs,
+                                                    const std::string_view default_tag) const {
+    return inspect_or_apply_tag_repairs(storage_file_, songs, default_tag, false);
+}
+
+TagRepairSummary TagStore::apply_sanitize_repairs(const std::vector<Song>& songs,
+                                                  const std::string_view default_tag) const {
+    return inspect_or_apply_tag_repairs(storage_file_, songs, default_tag, true);
 }
 
 std::vector<std::string> TagStore::tags_for_song(const std::string_view song_name) const {

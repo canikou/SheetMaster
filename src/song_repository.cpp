@@ -99,6 +99,17 @@ std::string normalize_display_name_value(const std::string_view name) {
     return cleaned;
 }
 
+std::string sanitize_display_name_field(const std::string_view name) {
+    std::string cleaned;
+    cleaned.reserve(name.size());
+    for (const char c : name) {
+        if (std::iscntrl(static_cast<unsigned char>(c)) == 0) {
+            cleaned.push_back(c);
+        }
+    }
+    return trim(cleaned);
+}
+
 std::string sanitize_song_id(const std::string_view value) {
     std::string cleaned;
     cleaned.reserve(value.size());
@@ -220,14 +231,14 @@ SongDocument read_song_document(const std::filesystem::path& path) {
             if (key == "id") {
                 document.id = sanitize_song_id(value);
             } else if (key == "name") {
-                document.display_name = normalize_display_name_value(value);
+                document.display_name = sanitize_display_name_field(value);
             } else if (key == "grouping") {
                 const auto [open_brace, close_brace] = parse_grouping_token(value);
                 document.open_brace = open_brace;
                 document.close_brace = close_brace;
             } else if (key == "sustain") {
                 if (!value.empty()) {
-                    document.sustain_indicator = sanitize_sustain_indicator(value.front());
+                    document.sustain_indicator = value.front();
                 }
             } else if (key == "bpm") {
                 try {
@@ -363,8 +374,11 @@ MigrationSummary inspect_or_apply_migration(const std::filesystem::path& sheet_f
         if (legacy_format) {
             ++summary.legacy_format_files;
         }
-        if (missing_id || missing_name) {
-            ++summary.missing_id_or_name;
+        if (missing_id) {
+            ++summary.missing_id;
+        }
+        if (missing_name) {
+            ++summary.missing_name;
         }
         if (invalid_grouping) {
             ++summary.normalized_grouping;
