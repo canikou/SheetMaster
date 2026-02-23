@@ -98,7 +98,7 @@ if (WIN32)
     target_compile_definitions(${CORE_TARGET} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
-add_executable(${APP_NAME}
+add_executable(${APP_NAME} WIN32
     src/main.cpp
 )
 target_link_libraries(${APP_NAME} PRIVATE ${CORE_TARGET})

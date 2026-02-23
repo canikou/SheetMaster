@@ -15,6 +15,7 @@
         }
       ],
       "externalConsole": false,
+      "avoidWindowsConsoleRedirection": true,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
       "preLaunchTask": "build (debug)"
@@ -33,6 +34,7 @@
         }
       ],
       "externalConsole": false,
+      "avoidWindowsConsoleRedirection": true,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
       "preLaunchTask": "build (debug)"
