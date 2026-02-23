@@ -61,6 +61,7 @@ namespace {
 
 constexpr std::string_view kDefaultTag = "Virtual Piano";
 constexpr std::size_t kOverlayChunkSizeNoBreaks = 10;
+constexpr std::size_t kOverlayMaxAutoDetectedLineSize = kOverlayChunkSizeNoBreaks * 2;
 constexpr std::size_t kOverlaySmartChunkMin = 10;
 constexpr std::size_t kOverlaySmartChunkMax = 16;
 constexpr int kOverlayHeightPx = 144;
@@ -654,11 +655,11 @@ void MainWindow::rebuild_overlay_lines(const Song& song) {
     }
 
     const std::string raw_text = repository_.load_raw_sheet_text(song);
-    const bool has_explicit_line_breaks =
-        raw_text.find('\n') != std::string::npos || raw_text.find('\r') != std::string::npos;
     std::istringstream input(raw_text);
 
     std::size_t running_index = 0;
+    std::size_t non_empty_line_count = 0;
+    std::size_t longest_detected_line = 0;
     std::string line;
     while (std::getline(input, line)) {
         const std::vector<NoteGroup> parsed =
@@ -667,6 +668,8 @@ void MainWindow::rebuild_overlay_lines(const Song& song) {
             continue;
         }
 
+        ++non_empty_line_count;
+        longest_detected_line = std::max(longest_detected_line, parsed.size());
         overlay_line_starts_.push_back(running_index);
         overlay_lines_.emplace_back();
         std::vector<std::string>& keys = overlay_lines_.back();
@@ -678,7 +681,9 @@ void MainWindow::rebuild_overlay_lines(const Song& song) {
     }
 
     const bool mismatch = running_index != current_sheet_.size();
-    if (overlay_lines_.empty() || mismatch || !has_explicit_line_breaks) {
+    const bool has_usable_line_break_data =
+        non_empty_line_count > 1 && longest_detected_line <= kOverlayMaxAutoDetectedLineSize;
+    if (overlay_lines_.empty() || mismatch || !has_usable_line_break_data) {
         build_fixed_chunks(kOverlayChunkSizeNoBreaks);
     }
 }

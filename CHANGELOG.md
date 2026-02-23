@@ -8,6 +8,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 - No entries yet.
 
+## [1.5.1]
+
+### Fixed
+- Auto Detect chunking now falls back to fixed 10-note lines when detected line-break data is not usable (for example, only one non-empty parsed line or very long wrapped lines).
+- Overlay line detection no longer treats incidental newline artifacts as reliable split data.
+
 ## [1.5.0]
 
 ### Added
