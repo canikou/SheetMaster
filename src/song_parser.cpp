@@ -4,12 +4,8 @@
 
 namespace piano_assist {
 
-std::vector<NoteGroup> parse_sheet(
-    const std::string& raw,
-    const char open_brace,
-    const char close_brace,
-    const char sustain_indicator
-) {
+std::vector<NoteGroup> parse_sheet(const std::string& raw, const char open_brace,
+                                   const char close_brace, const char sustain_indicator) {
     std::vector<NoteGroup> sheet;
     std::string current_keys;
     bool in_brackets = false;

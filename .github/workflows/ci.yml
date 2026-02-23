@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  windows-msys2:
+    name: Windows (MSYS2 UCRT64)
     runs-on: windows-latest
 
     steps:
@@ -17,32 +18,114 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup MSYS2 (UCRT64)
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
+          cache: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
             mingw-w64-ucrt-x86_64-qt6-base
 
+      - name: Toolchain diagnostics
+        shell: msys2 {0}
+        run: |
+          echo "MSYS2 location (action output): ${{ steps.msys2.outputs.msys2-location }}"
+          which cmake gcc g++ ninja
+          cmake --version
+          gcc --version
+          ninja --version
+
       - name: Configure (Debug)
-        shell: pwsh
-        run: cmake --preset debug
+        shell: msys2 {0}
+        run: cmake --preset ci-debug
 
       - name: Build (Debug)
-        shell: pwsh
-        run: cmake --build --preset debug --parallel
+        shell: msys2 {0}
+        run: cmake --build --preset ci-debug --parallel
 
       - name: Test (Debug)
-        shell: pwsh
-        run: ctest --preset debug
+        shell: msys2 {0}
+        run: ctest --preset ci-debug --output-on-failure
 
       - name: Configure (Release)
-        shell: pwsh
-        run: cmake --preset release
+        shell: msys2 {0}
+        run: cmake --preset ci-release
 
       - name: Build (Release)
-        shell: pwsh
-        run: cmake --build --preset release --parallel
+        shell: msys2 {0}
+        run: cmake --build --preset ci-release --parallel
+
+  linux-build:
+    name: Linux (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: GCC
+            cc: gcc
+            cxx: g++
+          - name: Clang
+            cc: clang
+            cxx: clang++
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc g++ clang qt6-base-dev
+
+      - name: Toolchain diagnostics
+        run: |
+          which cmake "$CC" "$CXX" ninja
+          cmake --version
+          "$CC" --version
+          "$CXX" --version
+          ninja --version
+
+      - name: Configure (Debug)
+        run: cmake --preset ci-debug
+
+      - name: Build (Debug)
+        run: cmake --build --preset ci-debug --parallel
+
+      - name: Test (Debug)
+        run: ctest --preset ci-debug --output-on-failure
+
+      - name: Configure (Release)
+        run: cmake --preset ci-release
+
+      - name: Build (Release)
+        run: cmake --build --preset ci-release --parallel
+
+  lint:
+    name: Lint and Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install lint tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang clang-format clang-tidy qt6-base-dev
+
+      - name: Configure (Lint)
+        run: cmake --preset ci-lint
+
+      - name: Format Check
+        run: cmake --build --preset ci-lint --target format-check
+
+      - name: Clang-Tidy
+        run: cmake --build --preset ci-lint --target lint

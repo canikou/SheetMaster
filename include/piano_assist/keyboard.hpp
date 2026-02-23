@@ -5,7 +5,7 @@
 namespace piano_assist {
 
 class KeyboardInput final {
-public:
+  public:
     explicit KeyboardInput(bool strict_mode = true);
 
     void set_strict_mode(bool strict_mode);
@@ -14,7 +14,7 @@ public:
     static void wait_for_any_release();
     [[nodiscard]] static bool is_any_monitored_key_down();
 
-private:
+  private:
     bool strict_mode_{true};
 };
 

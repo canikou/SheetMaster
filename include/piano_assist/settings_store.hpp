@@ -7,13 +7,13 @@
 namespace piano_assist {
 
 class SettingsStore final {
-public:
+  public:
     explicit SettingsStore(std::filesystem::path settings_file);
 
     [[nodiscard]] AppSettings load() const;
     void save(const AppSettings& settings) const;
 
-private:
+  private:
     std::filesystem::path settings_file_;
 };
 

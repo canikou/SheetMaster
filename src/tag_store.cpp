@@ -33,9 +33,12 @@ std::vector<std::string> normalize_tags(std::vector<std::string> tags) {
 
     for (std::string& tag : tags) {
         tag = trim(tag);
-        tag.erase(std::remove_if(tag.begin(), tag.end(), [](const unsigned char c) {
-            return std::iscntrl(c) != 0 || c == '\t' || c == ',' || c == ';' || c == '|';
-        }), tag.end());
+        tag.erase(std::remove_if(tag.begin(), tag.end(),
+                                 [](const unsigned char c) {
+                                     return std::iscntrl(c) != 0 || c == '\t' || c == ',' ||
+                                            c == ';' || c == '|';
+                                 }),
+                  tag.end());
         if (tag.empty()) {
             continue;
         }
@@ -88,7 +91,8 @@ TagMap load_map(const std::filesystem::path& storage_file) {
         }
 
         const std::size_t delimiter = line.find('\t');
-        const std::string song_name = trim(delimiter == std::string::npos ? line : line.substr(0, delimiter));
+        const std::string song_name =
+            trim(delimiter == std::string::npos ? line : line.substr(0, delimiter));
         if (song_name.empty()) {
             continue;
         }
@@ -161,12 +165,8 @@ TagStore::TagStore(std::filesystem::path storage_file) : storage_file_(std::move
             continue;
         }
 
-        std::filesystem::copy_file(
-            legacy_path,
-            storage_file_,
-            std::filesystem::copy_options::overwrite_existing,
-            error
-        );
+        std::filesystem::copy_file(legacy_path, storage_file_,
+                                   std::filesystem::copy_options::overwrite_existing, error);
         if (!error) {
             std::filesystem::remove(legacy_path, error);
             break;
@@ -240,7 +240,8 @@ std::vector<std::string> TagStore::list_all_tags() const {
     return std::vector<std::string>(unique.begin(), unique.end());
 }
 
-void TagStore::set_tags_for_song(const std::string_view song_name, const std::vector<std::string>& tags) const {
+void TagStore::set_tags_for_song(const std::string_view song_name,
+                                 const std::vector<std::string>& tags) const {
     const std::string key = trim(song_name);
     if (key.empty()) {
         return;
@@ -257,7 +258,8 @@ void TagStore::remove_song(const std::string_view song_name) const {
     save_map(storage_file_, map);
 }
 
-void TagStore::rename_song(const std::string_view old_song_name, const std::string_view new_song_name) const {
+void TagStore::rename_song(const std::string_view old_song_name,
+                           const std::string_view new_song_name) const {
     const std::string old_key = trim(old_song_name);
     const std::string new_key = trim(new_song_name);
     if (old_key.empty() || new_key.empty() || old_key == new_key) {

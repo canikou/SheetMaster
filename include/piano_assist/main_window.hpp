@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <QMainWindow>
@@ -18,24 +19,24 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
 class QPushButton;
+class QString;
 class QTableWidget;
 
 namespace piano_assist {
 class FloatingOverlayWindow;
-}
+} // namespace piano_assist
 
 namespace piano_assist {
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 
-public:
+  public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-private slots:
+  private slots:
     void refresh_song_list();
     void handle_song_double_click(int row, int column);
     void handle_import_songs();
@@ -45,7 +46,7 @@ private slots:
     void handle_overlay_toggle(bool checked);
     void poll_input();
 
-private:
+  private:
     SongRepository repository_;
     TagStore tag_store_;
     SettingsStore settings_store_;
@@ -62,9 +63,9 @@ private:
     QPushButton* settings_button_{nullptr};
     QLabel* current_song_label_{nullptr};
     QLabel* duration_label_{nullptr};
+    QLabel* details_label_{nullptr};
     QCheckBox* strict_mode_checkbox_{nullptr};
     QCheckBox* overlay_checkbox_{nullptr};
-    QListWidget* key_list_{nullptr};
     std::unique_ptr<FloatingOverlayWindow> floating_overlay_;
 
     std::vector<Song> visible_songs_;
@@ -75,14 +76,29 @@ private:
     std::size_t current_index_{0};
     bool waiting_for_release_{false};
     bool paused_{false};
-    bool pause_key_latched_{false};
+    bool pause_combo_latched_{false};
+    bool left_key_latched_{false};
+    bool right_key_latched_{false};
+    bool up_key_latched_{false};
+    bool down_key_latched_{false};
+    bool tab_key_latched_{false};
 
     void build_ui();
+    void position_window_for_overlay();
     void repopulate_tag_filter();
     void select_song(const Song& song);
     void rebuild_overlay_lines(const Song& song);
     void update_playback_labels();
     void update_floating_overlay();
+    void update_practice_sheet_window();
+    [[nodiscard]] QString build_song_details_text() const;
+    void restart_current_song();
+    void apply_manual_navigation_hotkeys();
+    [[nodiscard]] bool create_backup_zip(QString* error_message) const;
+    [[nodiscard]] std::optional<std::size_t>
+    line_index_for_note_index(std::size_t note_index) const;
+    [[nodiscard]] std::vector<Song> selected_songs_from_table(QTableWidget* table,
+                                                              const std::vector<Song>& songs) const;
     [[nodiscard]] std::optional<Song> selected_song_from_table() const;
 };
 

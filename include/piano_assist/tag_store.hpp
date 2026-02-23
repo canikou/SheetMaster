@@ -10,7 +10,7 @@
 namespace piano_assist {
 
 class TagStore final {
-public:
+  public:
     explicit TagStore(std::filesystem::path storage_file);
 
     void migrate_song_name_keys_to_ids(const std::vector<Song>& songs) const;
@@ -22,7 +22,7 @@ public:
     void remove_song(std::string_view song_name) const;
     void rename_song(std::string_view old_song_name, std::string_view new_song_name) const;
 
-private:
+  private:
     std::filesystem::path storage_file_;
 };
 

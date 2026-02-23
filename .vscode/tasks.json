@@ -48,6 +48,20 @@
       "args": ["--preset", "release"],
       "dependsOn": ["build (release)"],
       "problemMatcher": []
+    },
+    {
+      "label": "format-check (debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "--target", "format-check"],
+      "problemMatcher": []
+    },
+    {
+      "label": "lint (debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "--target", "lint"],
+      "problemMatcher": ["$gcc"]
     }
   ]
 }

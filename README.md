@@ -1,17 +1,70 @@
 # SheetMaster
 
-Production-style C++20 Qt6 desktop app using CMake presets, VS Code workflow, CTest, and GitHub CI.
+C++23 Qt6 desktop app for Virtual Piano sheet playback, library management, and practice overlays.
 
-## Goals
+## Summary
 
-- Fast local iteration (`Ctrl+Shift+B`, `F5`).
-- Standardized template-aligned layout and workflow.
-- Debug and release preset parity across local + CI.
+SheetMaster is a Virtual Piano assistant focused on quick sheet playback and iteration:
 
-## Prerequisites
+- Searchable/taggable song library.
+- Sheet import/editor with configurable grouping (`[]` / `()`).
+- Optional BPM metadata and song detail display.
+- Always-on-top floating overlay with progress tracking and sheet view tab.
+- Strict/non-strict advancement modes, manual navigation hotkeys, and persisted user settings.
 
-- Windows + MSYS2 UCRT64 toolchain installed at `C:/msys64/ucrt64`.
-- Tools available in UCRT64:
+## Feature Highlights
+
+### Library and Song Management
+
+- Search songs by text and filter by tag.
+- Import songs with optional BPM and tags.
+- Manage songs in a dedicated dialog:
+  - edit/delete songs
+  - batch export selected/all songs
+  - import shared song payloads
+- Share/export format: `SMX1:` encoded payload for easy cross-client transfer.
+- Data sanitization flow (`Sanitize Data`) with:
+  - pre-change summary
+  - automatic `backup.zip` creation
+  - convention normalization (metadata/grouping/sustain token cleanup)
+
+### Playback and Controls
+
+- `Shift+Enter`: pause/resume playback.
+- `Left` / `Right`: step backward/forward by note.
+- `Up` / `Down`: jump by whole overlay line.
+- `Tab`: restart when playback is complete.
+- Strict Mode requires exact expected key/chord before advancing.
+- Non-strict mode advances on any monitored key press.
+
+### Floating Overlay and Sheet View
+
+- Base overlay remains a two-line always-on-top playback view.
+- Header shows song/progress plus optional Tags/BPM detail blocks.
+- Separate Sheet View tab can be shown/hidden from settings.
+- Clicking the tab toggles an extended 10-line sheet panel.
+- Sheet panel tracks current line position for scrolling context without per-key highlight.
+
+### Safety and Runtime Behavior
+
+- Single-instance lock prevents running multiple app instances simultaneously.
+- Optional icon resources are auto-used when present.
+- Runtime data remains file-based in the project directory.
+
+## Technical Baseline
+
+- Language: C++23
+- Build: CMake + Ninja
+- UI: Qt6 Widgets
+- Tests: doctest + CTest
+- Lint/format: clang-tidy + clang-format (`lint`, `format`, `format-check`)
+
+## Getting Started
+
+### Prerequisites (local Windows flow)
+
+- MSYS2 UCRT64 at `C:/msys64/ucrt64`
+- Required packages:
   - `gcc`
   - `cmake`
   - `ninja`
@@ -21,92 +74,55 @@ Production-style C++20 Qt6 desktop app using CMake presets, VS Code workflow, CT
   - `ms-vscode.cpptools`
   - `ms-vscode.cmake-tools`
 
-## Project Structure
+### Build and Run
 
-- `CMakeLists.txt`: app + core library targets and test registration.
-- `CMakePresets.json`: configure/build/test presets (`debug`, `release`).
-- `src/main.cpp`: executable entrypoint target.
-- `src/*.cpp` + `include/piano_assist/*.hpp`: reusable app/core code.
-- `tests/core_tests.cpp`: baseline CTest executable.
-- `.vscode/tasks.json`: configure/build/test tasks.
-- `.vscode/launch.json`: preset-based debug launch profiles.
-- `.github/workflows/ci.yml`: GitHub Actions build/test pipeline.
-
-## Binary Naming Convention
-
-- Debug/dev-style builds output `app.exe`.
-- Release builds output `SheetMaster.exe`.
-
-## Getting Started
-
-1. Configure Debug:
+1. Configure debug:
    - `cmake --preset debug`
-2. Build Debug:
+2. Build debug:
    - `cmake --build --preset debug --parallel`
 3. Run tests:
    - `ctest --preset debug`
 4. Run app:
-   - `./build/debug/app.exe`
+   - `build/debug/app.exe`
+
+## Presets
+
+- Local: `debug`, `release`
+- Optional vcpkg: `vcpkg-debug`, `vcpkg-release`
+- CI parity: `ci-debug`, `ci-release`, `ci-lint`
 
 ## VS Code Workflow
 
-- `Ctrl+Shift+B`: runs default task `build (debug)`.
-- `F5`: use launch profile `Debug (Preset Debug Binary)`.
-  - Launches `${workspaceFolder}/build/debug/app.exe`
-  - Runs `build (debug)` first as preLaunchTask.
-- Manual tasks:
-  - `configure (debug)` / `configure (release)`
-  - `build (debug)` / `build (release)`
-  - `test (debug)` / `test (release)`
+- `Ctrl+Shift+B` -> default `build (debug)` task
+- `F5` -> `Debug (Preset Debug Binary)` launch profile
+- Lint targets from tasks:
+  - `format-check (debug)`
+  - `lint (debug)`
 
-## CMake Presets
+## CI
 
-- Configure presets: `debug`, `release`
-- Build presets: `debug`, `release`
-- Test presets: `debug`, `release`
-- Generator: Ninja
-- Toolchain path injected via preset environment:
-  - `PATH=C:/msys64/ucrt64/bin;$penv{PATH}`
+GitHub Actions runs:
 
-## App Features
+- Windows (MSYS2 UCRT64): debug build/test + release build
+- Linux matrix (GCC/Clang): debug build/test + release build
+- Lint job: `format-check` + `lint`
 
-- Song library with search + tag filtering.
-- Import and edit songs from pasted text.
-- Grouping modes: `[]` and `()`.
-- Sustain indicators: `-` and `|`.
-- Always-on-top floating overlay with line/chord progress UI.
-- Strict and non-strict playback advancement.
-- Enter-key pause/resume during playback.
-- Persistent settings, songs, and per-song tags.
-
-## Data Storage
+## Data Files
 
 - Settings: `settings.PACFG`
-- Song files: `sheets/*.PADATA`
+- Songs: `sheets/*.PADATA`
 - Song tags: `sheets/song_tags.PADISCRIM`
+- Data sanitize backup: `backup.zip` (generated on demand)
 
-## Distribution Notes (Windows)
+## Packaging (Windows)
 
-Use the standardized packaging script:
+Use the portable packaging script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package-portable.ps1
 ```
 
-It builds release with presets and emits:
+Outputs:
 
 - `dist/SheetMaster/`
-- `dist/SheetMaster-portable-win64.zip`
-
-## For Coding Agents / LLMs
-
-When modifying this repository:
-
-1. Prefer presets over ad-hoc CMake commands.
-   - Configure: `cmake --preset debug`
-   - Build: `cmake --build --preset debug --parallel`
-   - Test: `ctest --preset debug`
-2. Keep debug output path assumption intact:
-   - `build/debug/app.exe`
-3. Keep release output named `SheetMaster.exe`.
-4. Keep CI and local preset workflow in sync.
+- `dist/SheetMaster-<version>-windows-portable.zip`

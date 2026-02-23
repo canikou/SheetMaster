@@ -11,12 +11,11 @@ namespace piano_assist {
 namespace {
 
 std::string trim(std::string value) {
-    const auto begin = std::find_if(value.begin(), value.end(), [](const unsigned char ch) {
-        return std::isspace(ch) == 0;
-    });
+    const auto begin = std::find_if(value.begin(), value.end(),
+                                    [](const unsigned char ch) { return std::isspace(ch) == 0; });
     const auto end = std::find_if(value.rbegin(), value.rend(), [](const unsigned char ch) {
-        return std::isspace(ch) == 0;
-    }).base();
+                         return std::isspace(ch) == 0;
+                     }).base();
     if (begin >= end) {
         return {};
     }
@@ -35,6 +34,17 @@ std::string chunking_mode_to_string(const OverlayChunkingMode mode) {
     return mode == OverlayChunkingMode::Smart ? "smart" : "auto_detect";
 }
 
+bool parse_bool_value(const std::string_view value, const bool fallback) {
+    const std::string normalized = trim(std::string(value));
+    if (normalized == "true" || normalized == "1") {
+        return true;
+    }
+    if (normalized == "false" || normalized == "0") {
+        return false;
+    }
+    return fallback;
+}
+
 std::filesystem::path legacy_settings_path_for(const std::filesystem::path& modern_path) {
     std::filesystem::path legacy_path = modern_path;
     legacy_path.replace_extension(".txt");
@@ -43,7 +53,8 @@ std::filesystem::path legacy_settings_path_for(const std::filesystem::path& mode
 
 } // namespace
 
-SettingsStore::SettingsStore(std::filesystem::path settings_file) : settings_file_(std::move(settings_file)) {
+SettingsStore::SettingsStore(std::filesystem::path settings_file)
+    : settings_file_(std::move(settings_file)) {
     std::error_code error;
     if (settings_file_.has_parent_path()) {
         std::filesystem::create_directories(settings_file_.parent_path(), error);
@@ -58,12 +69,8 @@ SettingsStore::SettingsStore(std::filesystem::path settings_file) : settings_fil
         return;
     }
 
-    std::filesystem::copy_file(
-        legacy_path,
-        settings_file_,
-        std::filesystem::copy_options::overwrite_existing,
-        error
-    );
+    std::filesystem::copy_file(legacy_path, settings_file_,
+                               std::filesystem::copy_options::overwrite_existing, error);
     if (!error) {
         std::filesystem::remove(legacy_path, error);
     }
@@ -81,10 +88,7 @@ AppSettings SettingsStore::load() const {
         }
     }
 
-    std::string content(
-        (std::istreambuf_iterator<char>(in)),
-        std::istreambuf_iterator<char>()
-    );
+    std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 
     if (content.find('=') != std::string::npos) {
         std::istringstream lines(content);
@@ -99,11 +103,7 @@ AppSettings SettingsStore::load() const {
             const std::string value = trim(line.substr(delimiter + 1));
 
             if (key == "strict_mode") {
-                if (value == "true" || value == "1") {
-                    settings.strict_mode = true;
-                } else if (value == "false" || value == "0") {
-                    settings.strict_mode = false;
-                }
+                settings.strict_mode = parse_bool_value(value, settings.strict_mode);
             } else if (key == "input_poll_interval_ms") {
                 try {
                     const int parsed = std::stoi(value);
@@ -112,6 +112,18 @@ AppSettings SettingsStore::load() const {
                 }
             } else if (key == "overlay_chunking_mode") {
                 settings.overlay_chunking_mode = parse_chunking_mode(value);
+            } else if (key == "show_song_details") {
+                settings.show_song_details = parse_bool_value(value, settings.show_song_details);
+            } else if (key == "show_tag_details") {
+                settings.show_tag_details = parse_bool_value(value, settings.show_tag_details);
+            } else if (key == "show_bpm_details") {
+                settings.show_bpm_details = parse_bool_value(value, settings.show_bpm_details);
+            } else if (key == "show_sheet_tab_button") {
+                settings.show_sheet_tab_button =
+                    parse_bool_value(value, settings.show_sheet_tab_button);
+            } else if (key == "show_practice_sheet") {
+                settings.show_practice_sheet =
+                    parse_bool_value(value, settings.show_practice_sheet);
             }
         }
         return settings;
@@ -147,7 +159,13 @@ void SettingsStore::save(const AppSettings& settings) const {
     out << std::boolalpha;
     out << "strict_mode=" << settings.strict_mode << '\n';
     out << "input_poll_interval_ms=" << std::clamp(settings.input_poll_interval_ms, 1, 100) << '\n';
-    out << "overlay_chunking_mode=" << chunking_mode_to_string(settings.overlay_chunking_mode) << '\n';
+    out << "overlay_chunking_mode=" << chunking_mode_to_string(settings.overlay_chunking_mode)
+        << '\n';
+    out << "show_song_details=" << settings.show_song_details << '\n';
+    out << "show_tag_details=" << settings.show_tag_details << '\n';
+    out << "show_bpm_details=" << settings.show_bpm_details << '\n';
+    out << "show_sheet_tab_button=" << settings.show_sheet_tab_button << '\n';
+    out << "show_practice_sheet=" << settings.show_practice_sheet << '\n';
 
     const std::filesystem::path legacy_path = legacy_settings_path_for(settings_file_);
     if (legacy_path != settings_file_ && std::filesystem::exists(legacy_path)) {

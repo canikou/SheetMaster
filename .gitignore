@@ -5,7 +5,7 @@ dist/
 out/
 cmake-build-*/
 CMakeUserPresets.json
-cpp-mntchocoluvr/
+vcpkg_installed/
 
 # Keep shared VS Code config, ignore everything else in .vscode
 .vscode/*
@@ -48,13 +48,4 @@ Thumbs.db
 settings.PACFG
 settings.txt
 sheets/song_tags.PADISCRIM
-
-# Native binaries / debug artifacts
-*.exe
-*.obj
-*.o
-*.a
-*.lib
-*.dll
-*.pdb
-*.ilk
+backup.zip

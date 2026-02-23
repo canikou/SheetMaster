@@ -28,6 +28,7 @@ struct SongDocument {
     char open_brace{'['};
     char close_brace{']'};
     char sustain_indicator{'-'};
+    std::optional<int> bpm{};
     std::string body{};
     bool is_modern{false};
 };
@@ -64,8 +65,22 @@ std::pair<char, char> parse_grouping_token(const std::string_view token) {
     return {'[', ']'};
 }
 
-char sanitize_sustain_indicator(const char value) {
-    return (value == '|') ? '|' : '-';
+char sanitize_sustain_indicator(const char /*value*/) { return '-'; }
+
+std::optional<int> sanitize_bpm(const std::optional<int> bpm) {
+    if (!bpm.has_value()) {
+        return std::nullopt;
+    }
+    if (*bpm < 1 || *bpm > 400) {
+        return std::nullopt;
+    }
+    return bpm;
+}
+
+std::string normalize_sheet_body(const std::string_view raw_body) {
+    std::string normalized(raw_body);
+    std::replace(normalized.begin(), normalized.end(), '|', '-');
+    return normalized;
 }
 
 std::string normalize_display_name_value(const std::string_view name) {
@@ -157,13 +172,9 @@ std::uint64_t fnv1a_64(const std::string_view data) {
     return hash;
 }
 
-std::string build_song_id(
-    const std::string_view display_name,
-    const std::string_view raw_sheet_data,
-    const char open_brace,
-    const char close_brace,
-    const char sustain_indicator
-) {
+std::string build_song_id(const std::string_view display_name,
+                          const std::string_view raw_sheet_data, const char open_brace,
+                          const char close_brace, const char sustain_indicator) {
     std::string seed;
     seed.reserve(display_name.size() + raw_sheet_data.size() + 16);
     seed.append(normalize_display_name_value(display_name));
@@ -217,6 +228,13 @@ SongDocument read_song_document(const std::filesystem::path& path) {
             } else if (key == "sustain") {
                 if (!value.empty()) {
                     document.sustain_indicator = sanitize_sustain_indicator(value.front());
+                }
+            } else if (key == "bpm") {
+                try {
+                    const int parsed = std::stoi(value);
+                    document.bpm = sanitize_bpm(parsed);
+                } catch (const std::exception&) {
+                    document.bpm = std::nullopt;
                 }
             }
         }
@@ -276,41 +294,154 @@ void write_song_document(const std::filesystem::path& path, const SongDocument& 
                                  ? document.close_brace
                                  : ']';
     const char sustain_indicator = sanitize_sustain_indicator(document.sustain_indicator);
-    const std::string id = sanitize_song_id(
-        document.id.empty() ? path.stem().string() : std::string(document.id)
-    );
+    const std::optional<int> bpm = sanitize_bpm(document.bpm);
+    const std::string id =
+        sanitize_song_id(document.id.empty() ? path.stem().string() : std::string(document.id));
     const std::string display_name = normalize_display_name_value(
-        document.display_name.empty() ? path.stem().string() : std::string(document.display_name)
-    );
+        document.display_name.empty() ? path.stem().string() : std::string(document.display_name));
+    const std::string normalized_body = normalize_sheet_body(document.body);
 
     out << kModernMarker << '\n';
     out << "id=" << id << '\n';
     out << "name=" << display_name << '\n';
     out << "grouping=" << grouping_token(open_brace, close_brace) << '\n';
     out << "sustain=" << sustain_indicator << '\n';
+    if (bpm.has_value()) {
+        out << "bpm=" << *bpm << '\n';
+    }
     out << kMetadataSeparator << '\n';
-    out << document.body;
+    out << normalized_body;
 
-    if (!document.body.empty() && document.body.back() != '\n') {
+    if (!normalized_body.empty() && normalized_body.back() != '\n') {
         out << '\n';
     }
 }
 
+MigrationSummary inspect_or_apply_migration(const std::filesystem::path& sheet_folder,
+                                            const bool apply_changes) {
+    MigrationSummary summary{};
+    if (!std::filesystem::exists(sheet_folder)) {
+        return summary;
+    }
+
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(sheet_folder)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+
+        std::string extension = entry.path().extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+                       [](const unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (extension != kLegacySongDataExtensionLower && extension != kSongDataExtensionLower) {
+            continue;
+        }
+
+        ++summary.scanned_files;
+
+        const bool legacy_extension = extension == kLegacySongDataExtensionLower;
+        const SongDocument document = read_song_document(entry.path());
+        const bool legacy_format = !document.is_modern;
+        const bool missing_id = document.id.empty();
+        const bool missing_name = document.display_name.empty();
+        const bool invalid_grouping =
+            !is_grouping_pair_valid(document.open_brace, document.close_brace);
+        const bool sustain_needs_normalization = document.sustain_indicator != '-';
+        const bool body_needs_normalization = document.body.find('|') != std::string::npos;
+        const bool needs_rewrite = legacy_extension || legacy_format || missing_id ||
+                                   missing_name || invalid_grouping ||
+                                   sustain_needs_normalization || body_needs_normalization;
+
+        if (!needs_rewrite) {
+            continue;
+        }
+
+        ++summary.files_to_rewrite;
+        if (legacy_extension) {
+            ++summary.legacy_extension_files;
+        }
+        if (legacy_format) {
+            ++summary.legacy_format_files;
+        }
+        if (missing_id || missing_name) {
+            ++summary.missing_id_or_name;
+        }
+        if (invalid_grouping) {
+            ++summary.normalized_grouping;
+        }
+        if (sustain_needs_normalization) {
+            ++summary.normalized_sustain_metadata;
+        }
+        if (body_needs_normalization) {
+            ++summary.normalized_body_sustain_tokens;
+        }
+        if (summary.sample_changed_files.size() < 5) {
+            summary.sample_changed_files.push_back(entry.path().filename().string());
+        }
+
+        if (!apply_changes) {
+            continue;
+        }
+
+        try {
+            std::filesystem::path working_path = entry.path();
+            if (legacy_extension) {
+                std::filesystem::path target_path =
+                    working_path.parent_path() /
+                    (working_path.stem().string() + std::string(kSongDataExtension));
+                int suffix = 2;
+                while (std::filesystem::exists(target_path)) {
+                    target_path = working_path.parent_path() /
+                                  (working_path.stem().string() + "-" + std::to_string(suffix) +
+                                   std::string(kSongDataExtension));
+                    ++suffix;
+                }
+
+                std::error_code rename_error;
+                std::filesystem::rename(working_path, target_path, rename_error);
+                if (!rename_error) {
+                    working_path = target_path;
+                }
+            }
+
+            SongDocument normalized = document;
+            if (normalized.id.empty()) {
+                normalized.id = sanitize_song_id(working_path.stem().string());
+            }
+            if (normalized.display_name.empty()) {
+                normalized.display_name =
+                    normalize_display_name_value(working_path.stem().string());
+            }
+            if (!is_grouping_pair_valid(normalized.open_brace, normalized.close_brace)) {
+                normalized.open_brace = '[';
+                normalized.close_brace = ']';
+            }
+            normalized.sustain_indicator = '-';
+            normalized.bpm = sanitize_bpm(normalized.bpm);
+            normalized.body = normalize_sheet_body(normalized.body);
+
+            write_song_document(working_path, normalized);
+        } catch (const std::exception&) {
+        }
+    }
+
+    return summary;
+}
+
 } // namespace
 
-SongRepository::SongRepository(std::filesystem::path sheet_folder) : sheet_folder_(std::move(sheet_folder)) {}
+SongRepository::SongRepository(std::filesystem::path sheet_folder)
+    : sheet_folder_(std::move(sheet_folder)) {}
 
 void SongRepository::ensure_storage() const {
     std::error_code error;
     std::filesystem::create_directories(sheet_folder_, error);
-    migrate_legacy_files_if_needed();
 }
 
 std::string SongRepository::to_lower(const std::string_view value) {
     std::string lowered(value);
-    std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](const unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                   [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return lowered;
 }
 
@@ -324,7 +455,8 @@ std::filesystem::path SongRepository::make_unique_path(const std::string_view ba
 
     int suffix = 2;
     while (std::filesystem::exists(candidate)) {
-        candidate = sheet_folder_ / (safe_id + "-" + std::to_string(suffix) + std::string(kSongDataExtension));
+        candidate = sheet_folder_ /
+                    (safe_id + "-" + std::to_string(suffix) + std::string(kSongDataExtension));
         ++suffix;
     }
 
@@ -334,14 +466,13 @@ std::filesystem::path SongRepository::make_unique_path(const std::string_view ba
 std::vector<Song> SongRepository::list_songs(const std::string_view filter) const {
     std::vector<Song> songs;
 
-    migrate_legacy_files_if_needed();
-
     if (!std::filesystem::exists(sheet_folder_)) {
         return songs;
     }
 
     const std::string lowered_filter = to_lower(trim(filter));
-    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(sheet_folder_)) {
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(sheet_folder_)) {
         if (!entry.is_regular_file()) {
             continue;
         }
@@ -353,19 +484,21 @@ std::vector<Song> SongRepository::list_songs(const std::string_view filter) cons
 
         const SongDocument document = read_song_document(entry.path());
         const std::string display_name = normalize_display_name(
-            document.display_name.empty() ? entry.path().stem().string() : document.display_name
-        );
-        if (!lowered_filter.empty() && to_lower(display_name).find(lowered_filter) == std::string::npos) {
+            document.display_name.empty() ? entry.path().stem().string() : document.display_name);
+        if (!lowered_filter.empty() &&
+            to_lower(display_name).find(lowered_filter) == std::string::npos) {
             continue;
         }
 
         Song song{};
-        song.id = sanitize_song_id(document.id.empty() ? entry.path().stem().string() : document.id);
+        song.id =
+            sanitize_song_id(document.id.empty() ? entry.path().stem().string() : document.id);
         song.name = display_name;
         song.file_name = entry.path().filename().string();
         song.open_brace = document.open_brace;
         song.close_brace = document.close_brace;
         song.sustain_indicator = document.sustain_indicator;
+        song.bpm = sanitize_bpm(document.bpm);
 
         songs.push_back(std::move(song));
     }
@@ -383,43 +516,28 @@ std::vector<Song> SongRepository::list_songs(const std::string_view filter) cons
 }
 
 std::vector<NoteGroup> SongRepository::load_sheet(const Song& song) const {
-    migrate_legacy_files_if_needed();
-
     const std::filesystem::path path = sheet_folder_ / song.file_name;
     const SongDocument document = read_song_document(path);
-    return parse_sheet(
-        document.body + " ",
-        document.open_brace,
-        document.close_brace,
-        document.sustain_indicator
-    );
+    return parse_sheet(document.body + " ", document.open_brace, document.close_brace,
+                       document.sustain_indicator);
 }
 
 std::string SongRepository::load_raw_sheet_text(const Song& song) const {
-    migrate_legacy_files_if_needed();
-
     const std::filesystem::path path = sheet_folder_ / song.file_name;
     return read_song_document(path).body;
 }
 
-std::string SongRepository::import_song(
-    const std::string_view requested_name,
-    const std::string_view raw_sheet_data,
-    const char open_brace,
-    const char close_brace,
-    const char sustain_indicator
-) const {
+std::string SongRepository::import_song(const std::string_view requested_name,
+                                        const std::string_view raw_sheet_data,
+                                        const char open_brace, const char close_brace,
+                                        const char sustain_indicator,
+                                        const std::optional<int> bpm) const {
     ensure_storage();
 
     const std::string display_name = normalize_display_name(requested_name);
     const char normalized_sustain = sanitize_sustain_indicator(sustain_indicator);
-    const std::string base_id = build_song_id(
-        display_name,
-        raw_sheet_data,
-        open_brace,
-        close_brace,
-        normalized_sustain
-    );
+    const std::string base_id =
+        build_song_id(display_name, raw_sheet_data, open_brace, close_brace, normalized_sustain);
     const std::filesystem::path target_path = make_unique_path(base_id);
 
     SongDocument document{};
@@ -428,7 +546,8 @@ std::string SongRepository::import_song(
     document.open_brace = open_brace;
     document.close_brace = close_brace;
     document.sustain_indicator = normalized_sustain;
-    document.body = std::string(raw_sheet_data);
+    document.bpm = sanitize_bpm(bpm);
+    document.body = normalize_sheet_body(raw_sheet_data);
     write_song_document(target_path, document);
 
     return document.id;
@@ -442,6 +561,7 @@ std::string SongRepository::rename_song(const Song& song, const std::string_view
     document.open_brace = song.open_brace;
     document.close_brace = song.close_brace;
     document.sustain_indicator = song.sustain_indicator;
+    document.bpm = sanitize_bpm(song.bpm);
     write_song_document(path, document);
     return document.display_name;
 }
@@ -452,7 +572,8 @@ void SongRepository::delete_song(const Song& song) const {
     std::filesystem::remove(path, error);
 }
 
-void SongRepository::update_song_contents(const Song& song, const std::string_view raw_sheet_data) const {
+void SongRepository::update_song_contents(const Song& song,
+                                          const std::string_view raw_sheet_data) const {
     const std::filesystem::path path = sheet_folder_ / song.file_name;
     SongDocument document = read_song_document(path);
     document.id = sanitize_song_id(song.id.empty() ? path.stem().string() : song.id);
@@ -460,65 +581,19 @@ void SongRepository::update_song_contents(const Song& song, const std::string_vi
     document.open_brace = song.open_brace;
     document.close_brace = song.close_brace;
     document.sustain_indicator = song.sustain_indicator;
-    document.body = std::string(raw_sheet_data);
+    document.bpm = sanitize_bpm(song.bpm);
+    document.body = normalize_sheet_body(raw_sheet_data);
     write_song_document(path, document);
 }
 
-void SongRepository::migrate_legacy_files_if_needed() const {
-    if (migration_checked_) {
-        return;
-    }
-    migration_checked_ = true;
-
-    if (!std::filesystem::exists(sheet_folder_)) {
-        return;
-    }
-
-    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(sheet_folder_)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-        const std::string extension = to_lower(entry.path().extension().string());
-        if (extension != kLegacySongDataExtensionLower && extension != kSongDataExtensionLower) {
-            continue;
-        }
-
-        try {
-            std::filesystem::path working_path = entry.path();
-            if (extension == kLegacySongDataExtensionLower) {
-                std::filesystem::path target_path =
-                    working_path.parent_path() / (working_path.stem().string() + std::string(kSongDataExtension));
-                int suffix = 2;
-                while (std::filesystem::exists(target_path)) {
-                    target_path = working_path.parent_path() /
-                                  (working_path.stem().string() + " (" + std::to_string(suffix) + ")" +
-                                   std::string(kSongDataExtension));
-                    ++suffix;
-                }
-
-                std::error_code rename_error;
-                std::filesystem::rename(working_path, target_path, rename_error);
-                if (rename_error) {
-                    continue;
-                }
-                working_path = target_path;
-            }
-
-            SongDocument document = read_song_document(working_path);
-            const bool missing_id = document.id.empty();
-            const bool missing_name = document.display_name.empty();
-            if (!document.is_modern || missing_id || missing_name) {
-                if (missing_id) {
-                    document.id = sanitize_song_id(working_path.stem().string());
-                }
-                if (missing_name) {
-                    document.display_name = normalize_display_name(working_path.stem().string());
-                }
-                write_song_document(working_path, document);
-            }
-        } catch (const std::exception&) {
-        }
-    }
+MigrationSummary SongRepository::preview_convention_migration() const {
+    return inspect_or_apply_migration(sheet_folder_, false);
 }
+
+MigrationSummary SongRepository::apply_convention_migration() const {
+    return inspect_or_apply_migration(sheet_folder_, true);
+}
+
+void SongRepository::migrate_legacy_files_if_needed() const { (void)migration_checked_; }
 
 } // namespace piano_assist

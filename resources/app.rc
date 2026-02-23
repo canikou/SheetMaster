@@ -1,1 +1,3 @@
-IDI_ICON1 ICON "icons/app.ico"
+// SPDX-License-Identifier: MIT
+
+IDI_APP_ICON ICON "icons/app.ico"

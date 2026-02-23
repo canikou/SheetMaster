@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
@@ -5,21 +7,53 @@ Set-Location $repoRoot
 
 $buildDir = Join-Path $repoRoot 'build\release'
 $distRoot = Join-Path $repoRoot 'dist'
-$appDir = Join-Path $distRoot 'SheetMaster'
-$exePath = Join-Path $buildDir 'SheetMaster.exe'
 $qtBin = 'C:\msys64\ucrt64\bin'
 $qtTlsDir = 'C:\msys64\ucrt64\share\qt6\plugins\tls'
 
 cmake --preset release
 cmake --build --preset release --parallel
 
+function Get-CMakeCacheValue {
+  param(
+    [Parameter(Mandatory = $true)][string]$Key,
+    [Parameter(Mandatory = $true)][string]$CachePath
+  )
+
+  $escaped = [regex]::Escape($Key)
+  $match = Select-String -Path $CachePath -Pattern "^${escaped}:[^=]*=(.*)$" | Select-Object -First 1
+  if (-not $match) { return $null }
+  return $match.Matches[0].Groups[1].Value.Trim()
+}
+
+$cachePath = Join-Path $buildDir 'CMakeCache.txt'
+if (-not (Test-Path $cachePath)) {
+  throw "Release configure cache not found at: $cachePath"
+}
+
+$projectName = Get-CMakeCacheValue -Key 'CMAKE_PROJECT_NAME' -CachePath $cachePath
+$projectVersion = Get-CMakeCacheValue -Key 'CMAKE_PROJECT_VERSION' -CachePath $cachePath
+
+if ([string]::IsNullOrWhiteSpace($projectName)) {
+  $projectName = 'SheetMaster'
+}
+if ([string]::IsNullOrWhiteSpace($projectVersion)) {
+  $projectVersion = '0.0.0'
+}
+
+$appDir = Join-Path $distRoot $projectName
+$exePath = Join-Path $buildDir "$projectName.exe"
+if (-not (Test-Path $exePath)) {
+  throw "Release executable not found at: $exePath"
+}
+
 if (Test-Path $appDir) { Remove-Item -Recurse -Force $appDir }
 New-Item -ItemType Directory -Force $appDir | Out-Null
 
-Copy-Item $exePath (Join-Path $appDir 'SheetMaster.exe') -Force
-windeployqt6.exe --release --compiler-runtime --dir $appDir (Join-Path $appDir 'SheetMaster.exe')
+Copy-Item $exePath (Join-Path $appDir "$projectName.exe") -Force
+windeployqt6.exe --release --compiler-runtime --dir $appDir (Join-Path $appDir "$projectName.exe")
 
 # Force OpenSSL backend + libs for broader TLS compatibility.
+New-Item -ItemType Directory -Force (Join-Path $appDir 'tls') | Out-Null
 Copy-Item -Force (Join-Path $qtTlsDir 'qopensslbackend.dll') (Join-Path $appDir 'tls\qopensslbackend.dll')
 Copy-Item -Force (Join-Path $qtBin 'libssl-3-x64.dll') $appDir
 Copy-Item -Force (Join-Path $qtBin 'libcrypto-3-x64.dll') $appDir
@@ -75,7 +109,7 @@ if($finalMissing.Count -gt 0){
   throw "Missing non-system DLLs remain: $($finalMissing -join ', ')"
 }
 
-$zipPath = Join-Path $distRoot 'SheetMaster-portable-win64.zip'
+$zipPath = Join-Path $distRoot "$projectName-$projectVersion-windows-portable.zip"
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 Compress-Archive -Path (Join-Path $appDir '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
