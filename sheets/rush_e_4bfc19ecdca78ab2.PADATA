@@ -1,0 +1,22 @@
+#PA2_SONG_V1
+id=rush_e_4bfc19ecdca78ab2
+name=Rush E
+grouping=[]
+sustain=-
+---
+[6u] u u u [3u] u u u 
+[6u] u u u [3u] u u u 
+[6u] u u u [3u] i u Y 
+[6u]-p-[3s]--
+[%d] d d d [3d] s a d 
+[6s] s s s [3s] a p s 
+[7a] a a a [$I]-a-
+[%O]--3--
+[%u] u u u [3u] u u u 
+[6u] u u u [3u] u u u 
+[6u] i u Y [3u]-p s 
+[6f]-j-[3l]--
+[9z] l k z [8l] k j l 
+[7k] j H k [6j] f s p 
+[3g] f d s a p O a 
+[6p]
