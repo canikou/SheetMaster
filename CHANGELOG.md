@@ -7,6 +7,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [Unreleased]
 
 ### Added
+- No entries yet.
+
+## [1.5.4]
+
+### Added
 - In-app update flow (startup check + manual `Check for Updates`) against GitHub Releases `latest` metadata.
 - Installer-first release packaging for Windows:
   - `installer/SheetMaster.iss`

@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.21)
 # ---- Edit this ONE variable per project ----
 set(APP_NAME "SheetMaster")
 # --------------------------------------------
-project(${APP_NAME} VERSION 1.5.2 LANGUAGES CXX)
+project(${APP_NAME} VERSION 1.5.4 LANGUAGES CXX)
 
 include(CTest)
 include(GNUInstallDirs)
