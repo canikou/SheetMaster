@@ -6,7 +6,16 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
-- No entries yet.
+### Added
+- In-app update flow (startup check + manual `Check for Updates`) against GitHub Releases `latest` metadata.
+- Installer-first release packaging for Windows:
+  - `installer/SheetMaster.iss`
+  - `scripts/package-setup.ps1`
+  - versioned `dist/SheetMaster-<version>-setup.exe` output
+- Update utility helpers and test coverage for semantic version comparison and release asset selection behavior.
+
+### Changed
+- Release docs now define installer asset naming and tag requirements for seamless auto-update compatibility.
 
 ## [1.5.2]
 

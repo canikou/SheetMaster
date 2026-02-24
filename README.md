@@ -51,6 +51,7 @@ SheetMaster is a Virtual Piano assistant focused on quick sheet playback and ite
 
 - Single-instance lock prevents running multiple app instances simultaneously.
 - Optional icon resources are auto-used when present.
+- Startup update checks compare local app version against GitHub Releases and can download/install newer versions with user consent.
 - Runtime data remains file-based in the project directory.
 
 ## Technical Baseline
@@ -128,3 +129,24 @@ Outputs:
 
 - `dist/SheetMaster/`
 - `dist/SheetMaster-<version>-windows-portable.zip`
+
+Build a Windows installer (`setup.exe`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-setup.ps1
+```
+
+Output:
+
+- `dist/SheetMaster-<version>-setup.exe`
+
+## Auto-Update Release Contract (GitHub)
+
+SheetMaster checks `releases/latest` on startup (throttled to once per day) and via the `Check for Updates` button.
+
+For seamless in-app updates:
+
+- Publish semver tags like `v1.5.3`.
+- Attach an installer asset named with `setup` or `installer` and extension `.exe` (preferred) or `.msi`.
+- Recommended asset name: `SheetMaster-<version>-setup.exe`.
+- If only a portable `.zip` exists, SheetMaster can download it, but install remains manual.

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <QMainWindow>
+#include <QPointer>
 #include <QTimer>
 
 #include "piano_assist/keyboard.hpp"
@@ -17,8 +18,11 @@
 
 class QCheckBox;
 class QComboBox;
+class QFile;
 class QLabel;
 class QLineEdit;
+class QNetworkAccessManager;
+class QNetworkReply;
 class QPushButton;
 class QString;
 class QTableWidget;
@@ -42,6 +46,7 @@ class MainWindow final : public QMainWindow {
     void handle_import_songs();
     void handle_manage_songs();
     void handle_settings();
+    void handle_check_updates();
     void handle_strict_mode_toggle(bool checked);
     void handle_overlay_toggle(bool checked);
     void poll_input();
@@ -61,6 +66,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* import_button_{nullptr};
     QPushButton* manage_button_{nullptr};
     QPushButton* settings_button_{nullptr};
+    QPushButton* check_updates_button_{nullptr};
     QLabel* current_song_label_{nullptr};
     QLabel* duration_label_{nullptr};
     QLabel* details_label_{nullptr};
@@ -82,6 +88,14 @@ class MainWindow final : public QMainWindow {
     bool up_key_latched_{false};
     bool down_key_latched_{false};
     bool tab_key_latched_{false};
+    QNetworkAccessManager* update_network_{nullptr};
+    QPointer<QNetworkReply> update_metadata_reply_;
+    QPointer<QNetworkReply> update_download_reply_;
+    QFile* update_download_file_{nullptr};
+    QString update_downloaded_file_path_;
+    QString update_downloaded_asset_name_;
+    QString update_expected_sha256_hex_;
+    bool update_user_initiated_check_{false};
 
     void build_ui();
     void position_window_for_overlay();
@@ -100,6 +114,12 @@ class MainWindow final : public QMainWindow {
     [[nodiscard]] std::vector<Song> selected_songs_from_table(QTableWidget* table,
                                                               const std::vector<Song>& songs) const;
     [[nodiscard]] std::optional<Song> selected_song_from_table() const;
+    void maybe_check_for_updates_on_startup();
+    void check_for_updates(bool user_initiated);
+    void handle_update_metadata_reply();
+    void handle_update_download_ready_read();
+    void handle_update_download_finished();
+    void cleanup_update_download(bool keep_downloaded_file);
 };
 
 } // namespace piano_assist

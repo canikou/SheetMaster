@@ -10,18 +10,26 @@
 #include <utility>
 #include <vector>
 
+#include "piano_assist/app_info.hpp"
 #include "piano_assist/floating_overlay_window.hpp"
 #include "piano_assist/song_parser.hpp"
+#include "piano_assist/update_utils.hpp"
 
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
+#include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFile>
+#include <QFileInfo>
 #include <QFont>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -31,21 +39,28 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QPlainTextEdit>
 #include <QProcess>
 #include <QPushButton>
 #include <QScreen>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QStandardPaths>
+#include <QSettings>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextOption>
 #include <QToolTip>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -93,6 +108,47 @@ constexpr const char* kStrictModeTooltip =
     "Off:\n"
     "- Any monitored key advances\n"
     "- More forgiving while learning";
+constexpr int kUpdateStartupDelayMs = 2500;
+constexpr qint64 kUpdateCheckIntervalSeconds = 24 * 60 * 60;
+constexpr const char* kUpdateLastCheckUtcSettingKey = "updates/last_check_utc";
+
+bool should_check_for_updates_now() {
+    QSettings settings;
+    const QDateTime last_checked_utc =
+        settings.value(QString::fromLatin1(kUpdateLastCheckUtcSettingKey)).toDateTime();
+    if (!last_checked_utc.isValid()) {
+        return true;
+    }
+    return last_checked_utc.secsTo(QDateTime::currentDateTimeUtc()) >=
+           kUpdateCheckIntervalSeconds;
+}
+
+void record_update_check_now() {
+    QSettings settings;
+    settings.setValue(QString::fromLatin1(kUpdateLastCheckUtcSettingKey),
+                      QDateTime::currentDateTimeUtc());
+}
+
+std::vector<ReleaseAssetInfo> parse_release_assets(const QJsonArray& assets) {
+    std::vector<ReleaseAssetInfo> parsed;
+    parsed.reserve(static_cast<std::size_t>(assets.size()));
+
+    for (const QJsonValue& value : assets) {
+        if (!value.isObject()) {
+            continue;
+        }
+
+        const QJsonObject asset_object = value.toObject();
+        ReleaseAssetInfo asset;
+        asset.name = asset_object.value("name").toString().trimmed().toStdString();
+        asset.download_url =
+            asset_object.value("browser_download_url").toString().trimmed().toStdString();
+        asset.digest = asset_object.value("digest").toString().trimmed().toStdString();
+        parsed.push_back(std::move(asset));
+    }
+
+    return parsed;
+}
 
 class InstantToolTipFilter final : public QObject {
   public:
@@ -347,6 +403,7 @@ MainWindow::MainWindow(QWidget* parent)
       keyboard_(settings_.strict_mode) {
     repository_.ensure_storage();
     input_poll_timer_.setInterval(settings_.input_poll_interval_ms);
+    update_network_ = new QNetworkAccessManager(this);
 
     build_ui();
     floating_overlay_ = std::make_unique<FloatingOverlayWindow>();
@@ -376,9 +433,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(&input_poll_timer_, &QTimer::timeout, this, &MainWindow::poll_input);
     input_poll_timer_.start();
+    QTimer::singleShot(kUpdateStartupDelayMs, this,
+                       &MainWindow::maybe_check_for_updates_on_startup);
 }
 
 MainWindow::~MainWindow() {
+    cleanup_update_download(false);
     if (floating_overlay_ != nullptr) {
         floating_overlay_->close();
     }
@@ -439,9 +499,11 @@ void MainWindow::build_ui() {
     import_button_ = new QPushButton("Import Songs", central);
     manage_button_ = new QPushButton("Manage Songs", central);
     settings_button_ = new QPushButton("Settings", central);
+    check_updates_button_ = new QPushButton("Check for Updates", central);
     action_column->addWidget(import_button_);
     action_column->addWidget(manage_button_);
     action_column->addWidget(settings_button_);
+    action_column->addWidget(check_updates_button_);
     action_column->addStretch(1);
 
     content_row->addWidget(song_table_, 1);
@@ -479,6 +541,7 @@ void MainWindow::build_ui() {
     connect(import_button_, &QPushButton::clicked, this, &MainWindow::handle_import_songs);
     connect(manage_button_, &QPushButton::clicked, this, &MainWindow::handle_manage_songs);
     connect(settings_button_, &QPushButton::clicked, this, &MainWindow::handle_settings);
+    connect(check_updates_button_, &QPushButton::clicked, this, &MainWindow::handle_check_updates);
     connect(strict_mode_checkbox_, &QCheckBox::toggled, this,
             &MainWindow::handle_strict_mode_toggle);
     connect(overlay_checkbox_, &QCheckBox::toggled, this, &MainWindow::handle_overlay_toggle);
@@ -1517,6 +1580,282 @@ void MainWindow::handle_settings() {
         rebuild_overlay_lines(*current_song_);
     }
     update_playback_labels();
+}
+
+void MainWindow::handle_check_updates() { check_for_updates(true); }
+
+void MainWindow::maybe_check_for_updates_on_startup() {
+    if (!should_check_for_updates_now()) {
+        return;
+    }
+    check_for_updates(false);
+}
+
+void MainWindow::check_for_updates(const bool user_initiated) {
+    if (update_network_ == nullptr) {
+        return;
+    }
+
+    if (update_metadata_reply_ != nullptr || update_download_reply_ != nullptr) {
+        if (user_initiated) {
+            QMessageBox::information(this, "Update check", "An update check is already running.");
+        }
+        return;
+    }
+
+    update_user_initiated_check_ = user_initiated;
+    record_update_check_now();
+
+    QNetworkRequest request(QUrl(QString::fromLatin1(AppInfo::kLatestReleaseApiUrl)));
+    request.setHeader(
+        QNetworkRequest::UserAgentHeader,
+        QString("%1/%2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion()));
+    request.setRawHeader("Accept", "application/vnd.github+json");
+
+    update_metadata_reply_ = update_network_->get(request);
+    connect(update_metadata_reply_, &QNetworkReply::finished, this,
+            &MainWindow::handle_update_metadata_reply);
+}
+
+void MainWindow::handle_update_metadata_reply() {
+    const bool user_initiated = update_user_initiated_check_;
+    QPointer<QNetworkReply> reply = update_metadata_reply_;
+    update_metadata_reply_ = nullptr;
+    if (reply == nullptr) {
+        return;
+    }
+
+    const QByteArray payload = reply->readAll();
+    const QNetworkReply::NetworkError network_error = reply->error();
+    const QString network_error_text = reply->errorString();
+    reply->deleteLater();
+
+    if (network_error != QNetworkReply::NoError) {
+        if (user_initiated) {
+            QMessageBox::warning(this, "Update check",
+                                 QString("Failed to check updates:\n%1").arg(network_error_text));
+        }
+        return;
+    }
+
+    QJsonParseError parse_error;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parse_error);
+    if (parse_error.error != QJsonParseError::NoError || !document.isObject()) {
+        if (user_initiated) {
+            QMessageBox::warning(this, "Update check", "Update metadata was invalid.");
+        }
+        return;
+    }
+
+    const QJsonObject root = document.object();
+    const QString latest_tag = root.value("tag_name").toString().trimmed();
+    const QString release_url =
+        root.value("html_url").toString(QString::fromLatin1(AppInfo::kReleasesPageUrl));
+    if (latest_tag.isEmpty()) {
+        if (user_initiated) {
+            QMessageBox::warning(this, "Update check",
+                                 "Latest release did not include a version tag.");
+        }
+        return;
+    }
+
+    QString local_version = QCoreApplication::applicationVersion().trimmed();
+    if (local_version.isEmpty()) {
+        local_version = "0.0.0";
+    }
+    if (!is_remote_version_newer(latest_tag.toStdString(), local_version.toStdString())) {
+        if (user_initiated) {
+            QMessageBox::information(this, "Update check", "You're already on the latest version.");
+        }
+        return;
+    }
+
+    const SelectedReleaseAsset asset = pick_best_release_asset(parse_release_assets(root.value("assets").toArray()));
+    if (!asset.has_download) {
+        const QMessageBox::StandardButton open_releases = QMessageBox::question(
+            this, "Update available",
+            QString("A new version (%1) is available, but no downloadable asset was found.\n\n"
+                    "Open the releases page now?")
+                .arg(latest_tag),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (open_releases == QMessageBox::Yes) {
+            QDesktopServices::openUrl(QUrl(release_url));
+        }
+        return;
+    }
+
+    QString message =
+        QString("A new version (%1) is available.\nCurrent version: %2\n\nDownload and install now?")
+            .arg(latest_tag, local_version);
+    if (!asset.is_installer) {
+        message += "\n\nNo installer asset was found. SheetMaster can download this release "
+                   "package, but installation may require manual steps.";
+    }
+
+    if (QMessageBox::question(this, "Update available", message, QMessageBox::Yes | QMessageBox::No,
+                              QMessageBox::Yes) != QMessageBox::Yes) {
+        return;
+    }
+
+    cleanup_update_download(false);
+
+    QString temp_root = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    if (temp_root.isEmpty()) {
+        temp_root = QDir::tempPath();
+    }
+    if (temp_root.isEmpty() || !QDir().mkpath(temp_root)) {
+        QMessageBox::warning(this, "Update download", "No writable temp directory is available.");
+        return;
+    }
+
+    const QString safe_name = QFileInfo(QString::fromStdString(asset.name)).fileName();
+    update_downloaded_asset_name_ =
+        safe_name.isEmpty() ? QString("sheetmaster-update-%1.bin").arg(latest_tag) : safe_name;
+    update_downloaded_file_path_ = QDir(temp_root).filePath(update_downloaded_asset_name_);
+    update_expected_sha256_hex_ = QString::fromStdString(asset.sha256_hex).trimmed().toLower();
+
+    update_download_file_ = new QFile(update_downloaded_file_path_);
+    if (!update_download_file_->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        delete update_download_file_;
+        update_download_file_ = nullptr;
+        QMessageBox::warning(this, "Update download", "Failed to open local file for update download.");
+        return;
+    }
+
+    QNetworkRequest download_request(QUrl(QString::fromStdString(asset.download_url)));
+    download_request.setHeader(
+        QNetworkRequest::UserAgentHeader,
+        QString("%1/%2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion()));
+    download_request.setRawHeader("Accept", "application/octet-stream");
+
+    update_download_reply_ = update_network_->get(download_request);
+    connect(update_download_reply_, &QNetworkReply::readyRead, this,
+            &MainWindow::handle_update_download_ready_read);
+    connect(update_download_reply_, &QNetworkReply::finished, this,
+            &MainWindow::handle_update_download_finished);
+}
+
+void MainWindow::handle_update_download_ready_read() {
+    if (update_download_reply_ == nullptr || update_download_file_ == nullptr) {
+        return;
+    }
+
+    const QByteArray chunk = update_download_reply_->readAll();
+    if (!chunk.isEmpty()) {
+        update_download_file_->write(chunk);
+    }
+}
+
+void MainWindow::handle_update_download_finished() {
+    QPointer<QNetworkReply> reply = update_download_reply_;
+    update_download_reply_ = nullptr;
+    if (reply == nullptr) {
+        return;
+    }
+
+    handle_update_download_ready_read();
+
+    if (update_download_file_ != nullptr) {
+        update_download_file_->flush();
+        update_download_file_->close();
+        delete update_download_file_;
+        update_download_file_ = nullptr;
+    }
+
+    const QNetworkReply::NetworkError network_error = reply->error();
+    const QString network_error_text = reply->errorString();
+    reply->deleteLater();
+
+    if (network_error != QNetworkReply::NoError) {
+        cleanup_update_download(false);
+        QMessageBox::warning(this, "Update download",
+                             QString("Failed to download update:\n%1").arg(network_error_text));
+        return;
+    }
+
+    if (!update_expected_sha256_hex_.isEmpty()) {
+        QFile downloaded_file(update_downloaded_file_path_);
+        if (!downloaded_file.open(QIODevice::ReadOnly)) {
+            cleanup_update_download(false);
+            QMessageBox::warning(this, "Update verification",
+                                 "Downloaded update could not be reopened for verification.");
+            return;
+        }
+
+        QCryptographicHash hash(QCryptographicHash::Sha256);
+        while (!downloaded_file.atEnd()) {
+            hash.addData(downloaded_file.read(64 * 1024));
+        }
+        const QString actual_digest = QString::fromLatin1(hash.result().toHex()).toLower();
+        if (actual_digest != update_expected_sha256_hex_) {
+            cleanup_update_download(false);
+            QMessageBox::warning(this, "Update verification",
+                                 "Downloaded update failed checksum verification.");
+            return;
+        }
+    }
+
+    const bool installer_asset = is_installer_asset_name(update_downloaded_asset_name_.toStdString());
+    if (!installer_asset) {
+        QMessageBox::information(
+            this, "Update downloaded",
+            QString("Downloaded the latest release package to:\n%1\n\nNo installer was detected "
+                    "in this asset. You can install it manually.")
+                .arg(QDir::toNativeSeparators(update_downloaded_file_path_)));
+        cleanup_update_download(true);
+        return;
+    }
+
+    if (QMessageBox::question(this, "Install update",
+                              QString("Update downloaded to:\n%1\n\nInstall now? SheetMaster will close.")
+                                  .arg(QDir::toNativeSeparators(update_downloaded_file_path_)),
+                              QMessageBox::Yes | QMessageBox::No,
+                              QMessageBox::Yes) != QMessageBox::Yes) {
+        cleanup_update_download(true);
+        return;
+    }
+
+    const QString lower_name = update_downloaded_asset_name_.toLower();
+    const bool started = lower_name.endsWith(".msi")
+                             ? QProcess::startDetached(
+                                   "msiexec",
+                                   QStringList() << "/i"
+                                                 << QDir::toNativeSeparators(update_downloaded_file_path_))
+                             : QProcess::startDetached(QDir::toNativeSeparators(update_downloaded_file_path_),
+                                                       QStringList());
+    if (!started) {
+        QMessageBox::warning(this, "Install update", "Failed to launch installer.");
+        cleanup_update_download(true);
+        return;
+    }
+
+    cleanup_update_download(true);
+    QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+}
+
+void MainWindow::cleanup_update_download(const bool keep_downloaded_file) {
+    if (update_download_reply_ != nullptr) {
+        disconnect(update_download_reply_, nullptr, this, nullptr);
+        update_download_reply_->abort();
+        update_download_reply_->deleteLater();
+        update_download_reply_ = nullptr;
+    }
+
+    if (update_download_file_ != nullptr) {
+        if (update_download_file_->isOpen()) {
+            update_download_file_->close();
+        }
+        delete update_download_file_;
+        update_download_file_ = nullptr;
+    }
+
+    if (!keep_downloaded_file && !update_downloaded_file_path_.isEmpty()) {
+        QFile::remove(update_downloaded_file_path_);
+    }
+
+    update_downloaded_file_path_.clear();
+    update_downloaded_asset_name_.clear();
+    update_expected_sha256_hex_.clear();
 }
 
 void MainWindow::handle_strict_mode_toggle(const bool checked) {

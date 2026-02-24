@@ -33,7 +33,7 @@ if (NOT ENABLE_QT)
     message(FATAL_ERROR "SheetMaster currently requires Qt6 Widgets. Configure with -DENABLE_QT=ON.")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 
 set(CORE_TARGET "${APP_NAME}Core")
 set(TEST_TARGET "${APP_NAME}_tests")
@@ -64,6 +64,7 @@ file(GLOB_RECURSE PROJECT_LINT_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(${CORE_TARGET}
+    include/piano_assist/app_info.hpp
     include/piano_assist/floating_overlay_window.hpp
     include/piano_assist/keyboard.hpp
     include/piano_assist/main_window.hpp
@@ -73,6 +74,7 @@ add_library(${CORE_TARGET}
     include/piano_assist/song_repository.hpp
     include/piano_assist/tag_store.hpp
     include/piano_assist/types.hpp
+    include/piano_assist/update_utils.hpp
     src/floating_overlay_window.cpp
     src/keyboard.cpp
     src/main_window.cpp
@@ -81,6 +83,7 @@ add_library(${CORE_TARGET}
     src/song_parser.cpp
     src/song_repository.cpp
     src/tag_store.cpp
+    src/update_utils.cpp
 )
 add_library(${APP_NAME}::Core ALIAS ${CORE_TARGET})
 set_target_properties(${CORE_TARGET} PROPERTIES EXPORT_NAME Core)
@@ -90,7 +93,7 @@ target_include_directories(${CORE_TARGET}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(${CORE_TARGET} PUBLIC Qt6::Widgets)
+target_link_libraries(${CORE_TARGET} PUBLIC Qt6::Widgets Qt6::Network)
 target_compile_features(${CORE_TARGET} PUBLIC cxx_std_23)
 project_apply_default_build_options(${CORE_TARGET})
 
@@ -146,6 +149,7 @@ if (BUILD_TESTING)
         tests/core_tests.cpp
         tests/sanitize_tests.cpp
         tests/string_tests.cpp
+        tests/update_tests.cpp
     )
     target_link_libraries(${TEST_TARGET} PRIVATE ${CORE_TARGET} doctest::doctest)
     target_compile_features(${TEST_TARGET} PRIVATE cxx_std_23)

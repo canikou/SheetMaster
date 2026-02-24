@@ -4,6 +4,7 @@
 #include <QLockFile>
 #include <QMessageBox>
 
+#include "piano_assist/app_info.hpp"
 #include "piano_assist/main_window.hpp"
 
 #ifndef APP_VERSION
@@ -13,16 +14,17 @@
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
 
-    QLockFile instance_lock(QDir::temp().absoluteFilePath("SheetMaster.lock"));
+    const QString app_name = QString::fromLatin1(piano_assist::AppInfo::kAppName);
+    QLockFile instance_lock(QDir::temp().absoluteFilePath(QString("%1.lock").arg(app_name)));
     instance_lock.setStaleLockTime(0);
     if (!instance_lock.tryLock(100)) {
-        QMessageBox::information(nullptr, "SheetMaster", "SheetMaster is already running.");
+        QMessageBox::information(nullptr, app_name, QString("%1 is already running.").arg(app_name));
         return 0;
     }
 
-    QApplication::setApplicationName(QStringLiteral("SheetMaster"));
-    QApplication::setApplicationDisplayName(QStringLiteral("SheetMaster"));
-    QApplication::setOrganizationName(QStringLiteral("SheetMaster"));
+    QApplication::setApplicationName(app_name);
+    QApplication::setApplicationDisplayName(app_name);
+    QApplication::setOrganizationName(app_name);
     QApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
 
     const QIcon app_icon(QStringLiteral(":/icons/app.png"));
