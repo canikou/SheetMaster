@@ -66,7 +66,7 @@ SheetMaster is a Virtual Piano assistant focused on quick sheet playback and ite
 
 ### Prerequisites (local Windows flow)
 
-- MSYS2 UCRT64 at `C:/msys64/ucrt64`
+- MSYS2 UCRT64 tools available on `PATH`
 - Required packages:
   - `gcc`
   - `cmake`
@@ -76,6 +76,10 @@ SheetMaster is a Virtual Piano assistant focused on quick sheet playback and ite
 - VS Code extensions:
   - `ms-vscode.cpptools`
   - `ms-vscode.cmake-tools`
+
+The checked-in presets are path-agnostic. If Qt is not discoverable from `PATH`, set `CMAKE_PREFIX_PATH`, `QT_ROOT`, or `MSYS2_UCRT64`, or add a local, untracked `CMakeUserPresets.json`.
+
+For repository maintenance, prefer the installed CLI helpers: `rg` for search, `fd` for file discovery, `jq` for JSON, and `gh` for GitHub operations.
 
 ### Build and Run
 

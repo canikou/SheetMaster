@@ -7,8 +7,29 @@ Set-Location $repoRoot
 
 $buildDir = Join-Path $repoRoot 'build\release'
 $distRoot = Join-Path $repoRoot 'dist'
-$qtBin = 'C:\msys64\ucrt64\bin'
-$qtTlsDir = 'C:\msys64\ucrt64\share\qt6\plugins\tls'
+
+function Resolve-RequiredCommandDir {
+  param([Parameter(Mandatory = $true)][string]$Name)
+
+  $command = Get-Command $Name -ErrorAction SilentlyContinue
+  if (-not $command) {
+    throw "$Name was not found on PATH. Install Qt/MSYS2 tools or add their bin directory to PATH."
+  }
+
+  return Split-Path -Parent $command.Source
+}
+
+function Resolve-QtRoot {
+  if ($env:QT_ROOT) { return $env:QT_ROOT }
+  if ($env:MSYS2_UCRT64) { return $env:MSYS2_UCRT64 }
+
+  $qtBinDir = Resolve-RequiredCommandDir -Name 'windeployqt6.exe'
+  return Split-Path -Parent $qtBinDir
+}
+
+$qtRoot = Resolve-QtRoot
+$qtBin = Join-Path $qtRoot 'bin'
+$qtTlsDir = Join-Path $qtRoot 'share\qt6\plugins\tls'
 
 cmake --preset release
 cmake --build --preset release --parallel
@@ -54,9 +75,14 @@ windeployqt6.exe --release --compiler-runtime --dir $appDir (Join-Path $appDir "
 
 # Force OpenSSL backend + libs for broader TLS compatibility.
 New-Item -ItemType Directory -Force (Join-Path $appDir 'tls') | Out-Null
-Copy-Item -Force (Join-Path $qtTlsDir 'qopensslbackend.dll') (Join-Path $appDir 'tls\qopensslbackend.dll')
-Copy-Item -Force (Join-Path $qtBin 'libssl-3-x64.dll') $appDir
-Copy-Item -Force (Join-Path $qtBin 'libcrypto-3-x64.dll') $appDir
+$opensslBackend = Join-Path $qtTlsDir 'qopensslbackend.dll'
+if (Test-Path $opensslBackend) {
+  Copy-Item -Force $opensslBackend (Join-Path $appDir 'tls\qopensslbackend.dll')
+}
+foreach ($dll in @('libssl-3-x64.dll', 'libcrypto-3-x64.dll')) {
+  $source = Join-Path $qtBin $dll
+  if (Test-Path $source) { Copy-Item -Force $source $appDir }
+}
 
 # Copy project runtime data/docs.
 Copy-Item -Force README.md, LICENSE, CHANGELOG.md $appDir

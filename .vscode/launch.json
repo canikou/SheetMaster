@@ -8,16 +8,10 @@
       "program": "${workspaceFolder}/build/debug/app.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
-      "environment": [
-        {
-          "name": "PATH",
-          "value": "C:/msys64/ucrt64/bin;${env:PATH}"
-        }
-      ],
+      "environment": [],
       "externalConsole": false,
       "avoidWindowsConsoleRedirection": true,
       "MIMode": "gdb",
-      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
       "preLaunchTask": "build (debug)"
     },
     {
@@ -27,16 +21,10 @@
       "program": "${command:cmake.launchTargetPath}",
       "args": [],
       "cwd": "${workspaceFolder}",
-      "environment": [
-        {
-          "name": "PATH",
-          "value": "C:/msys64/ucrt64/bin;${env:PATH}"
-        }
-      ],
+      "environment": [],
       "externalConsole": false,
       "avoidWindowsConsoleRedirection": true,
       "MIMode": "gdb",
-      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
       "preLaunchTask": "build (debug)"
     }
   ]

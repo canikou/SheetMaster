@@ -10,14 +10,11 @@
       }
     },
     {
-      "name": "local-msys2-base",
+      "name": "local-toolchain-base",
       "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "C:/msys64/ucrt64"
-      },
-      "environment": {
-        "PATH": "C:/msys64/ucrt64/bin;$penv{PATH}"
+        "CMAKE_PREFIX_PATH": "$env{QT_ROOT};$env{MSYS2_UCRT64};$env{CMAKE_PREFIX_PATH}"
       }
     },
     {
@@ -36,8 +33,8 @@
     },
     {
       "name": "debug",
-      "displayName": "Debug (Ninja, local MSYS2 UCRT64)",
-      "inherits": "local-msys2-base",
+      "displayName": "Debug (Ninja, PATH toolchain)",
+      "inherits": "local-toolchain-base",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
@@ -45,8 +42,8 @@
     },
     {
       "name": "release",
-      "displayName": "Release (Ninja, local MSYS2 UCRT64)",
-      "inherits": "local-msys2-base",
+      "displayName": "Release (Ninja, PATH toolchain)",
+      "inherits": "local-toolchain-base",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
@@ -56,7 +53,7 @@
       "name": "vcpkg-debug",
       "displayName": "Debug (Ninja, local + vcpkg manifest)",
       "inherits": [
-        "local-msys2-base",
+        "local-toolchain-base",
         "vcpkg-base"
       ],
       "binaryDir": "${sourceDir}/build/vcpkg-debug",
@@ -68,7 +65,7 @@
       "name": "vcpkg-release",
       "displayName": "Release (Ninja, local + vcpkg manifest)",
       "inherits": [
-        "local-msys2-base",
+        "local-toolchain-base",
         "vcpkg-base"
       ],
       "binaryDir": "${sourceDir}/build/vcpkg-release",
