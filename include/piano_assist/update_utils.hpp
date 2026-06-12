@@ -29,8 +29,7 @@ struct SelectedReleaseAsset {
 
 [[nodiscard]] bool is_installer_asset_name(std::string_view asset_name);
 
-[[nodiscard]] SelectedReleaseAsset pick_best_release_asset(
-    const std::vector<ReleaseAssetInfo>& assets);
+[[nodiscard]] SelectedReleaseAsset
+pick_best_release_asset(const std::vector<ReleaseAssetInfo>& assets);
 
 } // namespace piano_assist
-

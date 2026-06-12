@@ -18,7 +18,8 @@ int main(int argc, char* argv[]) {
     QLockFile instance_lock(QDir::temp().absoluteFilePath(QString("%1.lock").arg(app_name)));
     instance_lock.setStaleLockTime(0);
     if (!instance_lock.tryLock(100)) {
-        QMessageBox::information(nullptr, app_name, QString("%1 is already running.").arg(app_name));
+        QMessageBox::information(nullptr, app_name,
+                                 QString("%1 is already running.").arg(app_name));
         return 0;
     }
 

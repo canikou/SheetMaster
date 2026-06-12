@@ -26,8 +26,9 @@ std::string trim_copy(std::string_view text) {
 
 std::string to_lower_copy(std::string_view text) {
     std::string lowered(text);
-    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
-                   [](const unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](const unsigned char value) {
+        return static_cast<char>(std::tolower(value));
+    });
     return lowered;
 }
 
@@ -138,9 +139,8 @@ bool is_installer_asset_name(const std::string_view asset_name) {
     if (ends_with(lowered, ".msi")) {
         return true;
     }
-    return ends_with(lowered, ".exe") &&
-           (lowered.find("setup") != std::string::npos ||
-            lowered.find("installer") != std::string::npos);
+    return ends_with(lowered, ".exe") && (lowered.find("setup") != std::string::npos ||
+                                          lowered.find("installer") != std::string::npos);
 }
 
 SelectedReleaseAsset pick_best_release_asset(const std::vector<ReleaseAssetInfo>& assets) {
@@ -173,8 +173,9 @@ SelectedReleaseAsset pick_best_release_asset(const std::vector<ReleaseAssetInfo>
         const std::string lowered_digest = to_lower_copy(trimmed_digest);
         if (lowered_digest.rfind("sha256:", 0) == 0 && trimmed_digest.size() > 7) {
             best.sha256_hex = trim_copy(trimmed_digest.substr(7));
-            std::transform(best.sha256_hex.begin(), best.sha256_hex.end(), best.sha256_hex.begin(),
-                           [](const unsigned char value) { return static_cast<char>(std::tolower(value)); });
+            std::transform(
+                best.sha256_hex.begin(), best.sha256_hex.end(), best.sha256_hex.begin(),
+                [](const unsigned char value) { return static_cast<char>(std::tolower(value)); });
         }
     }
 
@@ -182,4 +183,3 @@ SelectedReleaseAsset pick_best_release_asset(const std::vector<ReleaseAssetInfo>
 }
 
 } // namespace piano_assist
-

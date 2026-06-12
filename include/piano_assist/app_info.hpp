@@ -11,4 +11,3 @@ constexpr const char* kLatestReleaseApiUrl =
 constexpr const char* kReleasesPageUrl = "https://github.com/canikou/SheetMaster/releases";
 
 } // namespace piano_assist::AppInfo
-

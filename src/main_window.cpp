@@ -51,10 +51,10 @@
 #include <QProcess>
 #include <QPushButton>
 #include <QScreen>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QStandardPaths>
-#include <QSettings>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -119,8 +119,7 @@ bool should_check_for_updates_now() {
     if (!last_checked_utc.isValid()) {
         return true;
     }
-    return last_checked_utc.secsTo(QDateTime::currentDateTimeUtc()) >=
-           kUpdateCheckIntervalSeconds;
+    return last_checked_utc.secsTo(QDateTime::currentDateTimeUtc()) >= kUpdateCheckIntervalSeconds;
 }
 
 void record_update_check_now() {
@@ -1607,9 +1606,9 @@ void MainWindow::check_for_updates(const bool user_initiated) {
     record_update_check_now();
 
     QNetworkRequest request(QUrl(QString::fromLatin1(AppInfo::kLatestReleaseApiUrl)));
-    request.setHeader(
-        QNetworkRequest::UserAgentHeader,
-        QString("%1/%2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion()));
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+                      QString("%1/%2").arg(QCoreApplication::applicationName(),
+                                           QCoreApplication::applicationVersion()));
     request.setRawHeader("Accept", "application/vnd.github+json");
 
     update_metadata_reply_ = update_network_->get(request);
@@ -1670,7 +1669,8 @@ void MainWindow::handle_update_metadata_reply() {
         return;
     }
 
-    const SelectedReleaseAsset asset = pick_best_release_asset(parse_release_assets(root.value("assets").toArray()));
+    const SelectedReleaseAsset asset =
+        pick_best_release_asset(parse_release_assets(root.value("assets").toArray()));
     if (!asset.has_download) {
         const QMessageBox::StandardButton open_releases = QMessageBox::question(
             this, "Update available",
@@ -1685,7 +1685,8 @@ void MainWindow::handle_update_metadata_reply() {
     }
 
     QString message =
-        QString("A new version (%1) is available.\nCurrent version: %2\n\nDownload and install now?")
+        QString(
+            "A new version (%1) is available.\nCurrent version: %2\n\nDownload and install now?")
             .arg(latest_tag, local_version);
     if (!asset.is_installer) {
         message += "\n\nNo installer asset was found. SheetMaster can download this release "
@@ -1718,14 +1719,15 @@ void MainWindow::handle_update_metadata_reply() {
     if (!update_download_file_->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         delete update_download_file_;
         update_download_file_ = nullptr;
-        QMessageBox::warning(this, "Update download", "Failed to open local file for update download.");
+        QMessageBox::warning(this, "Update download",
+                             "Failed to open local file for update download.");
         return;
     }
 
     QNetworkRequest download_request(QUrl(QString::fromStdString(asset.download_url)));
-    download_request.setHeader(
-        QNetworkRequest::UserAgentHeader,
-        QString("%1/%2").arg(QCoreApplication::applicationName(), QCoreApplication::applicationVersion()));
+    download_request.setHeader(QNetworkRequest::UserAgentHeader,
+                               QString("%1/%2").arg(QCoreApplication::applicationName(),
+                                                    QCoreApplication::applicationVersion()));
     download_request.setRawHeader("Accept", "application/octet-stream");
 
     update_download_reply_ = update_network_->get(download_request);
@@ -1795,7 +1797,8 @@ void MainWindow::handle_update_download_finished() {
         }
     }
 
-    const bool installer_asset = is_installer_asset_name(update_downloaded_asset_name_.toStdString());
+    const bool installer_asset =
+        is_installer_asset_name(update_downloaded_asset_name_.toStdString());
     if (!installer_asset) {
         QMessageBox::information(
             this, "Update downloaded",
@@ -1806,23 +1809,23 @@ void MainWindow::handle_update_download_finished() {
         return;
     }
 
-    if (QMessageBox::question(this, "Install update",
-                              QString("Update downloaded to:\n%1\n\nInstall now? SheetMaster will close.")
-                                  .arg(QDir::toNativeSeparators(update_downloaded_file_path_)),
-                              QMessageBox::Yes | QMessageBox::No,
-                              QMessageBox::Yes) != QMessageBox::Yes) {
+    if (QMessageBox::question(
+            this, "Install update",
+            QString("Update downloaded to:\n%1\n\nInstall now? SheetMaster will close.")
+                .arg(QDir::toNativeSeparators(update_downloaded_file_path_)),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes) {
         cleanup_update_download(true);
         return;
     }
 
     const QString lower_name = update_downloaded_asset_name_.toLower();
-    const bool started = lower_name.endsWith(".msi")
-                             ? QProcess::startDetached(
-                                   "msiexec",
-                                   QStringList() << "/i"
-                                                 << QDir::toNativeSeparators(update_downloaded_file_path_))
-                             : QProcess::startDetached(QDir::toNativeSeparators(update_downloaded_file_path_),
-                                                       QStringList());
+    const bool started =
+        lower_name.endsWith(".msi")
+            ? QProcess::startDetached(
+                  "msiexec", QStringList()
+                                 << "/i" << QDir::toNativeSeparators(update_downloaded_file_path_))
+            : QProcess::startDetached(QDir::toNativeSeparators(update_downloaded_file_path_),
+                                      QStringList());
     if (!started) {
         QMessageBox::warning(this, "Install update", "Failed to launch installer.");
         cleanup_update_download(true);

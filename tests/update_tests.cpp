@@ -17,13 +17,12 @@ TEST_CASE("version comparison accepts v-prefix and numeric segment padding") {
 }
 
 TEST_CASE("best release asset prefers setup exe over other artifacts") {
-    using piano_assist::ReleaseAssetInfo;
     using piano_assist::pick_best_release_asset;
+    using piano_assist::ReleaseAssetInfo;
 
     const std::vector<ReleaseAssetInfo> assets{
         {"SheetMaster-1.6.0-windows-portable.zip", "https://example.com/portable.zip", ""},
-        {"SheetMaster-1.6.0-setup.exe", "https://example.com/setup.exe",
-         "sha256:ABCDEF123456"},
+        {"SheetMaster-1.6.0-setup.exe", "https://example.com/setup.exe", "sha256:ABCDEF123456"},
         {"SheetMaster-1.6.0.msi", "https://example.com/setup.msi", ""}};
 
     const auto best = pick_best_release_asset(assets);
@@ -35,8 +34,8 @@ TEST_CASE("best release asset prefers setup exe over other artifacts") {
 }
 
 TEST_CASE("asset picker falls back to msi then zip") {
-    using piano_assist::ReleaseAssetInfo;
     using piano_assist::pick_best_release_asset;
+    using piano_assist::ReleaseAssetInfo;
 
     const auto msi_best = pick_best_release_asset(
         {ReleaseAssetInfo{"SheetMaster-1.6.0.msi", "https://example.com/setup.msi", ""}});
@@ -50,4 +49,3 @@ TEST_CASE("asset picker falls back to msi then zip") {
     CHECK_FALSE(zip_best.is_installer);
     CHECK(zip_best.name == "SheetMaster-1.6.0-windows-portable.zip");
 }
-
